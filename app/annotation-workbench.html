@@ -155,7 +155,7 @@ pre.note{white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 var(--font-
       <ul class="srcs" id="srcList"></ul>
       <h3 id="issueHead">Open items</h3>
       <ul class="issues" id="issueList"></ul>
-      <span class="kbd">Alt+1…9 jump to a section · Ctrl+Enter complete</span>
+      <span class="kbd">Alt+1…9 jump to a section · Alt+0 verdict · Ctrl+Enter complete</span>
     </aside>
   </div>
 </div>
@@ -192,6 +192,9 @@ const SECTIONS = [
   { id:"money", title:"Money movement & cash advancing", where:"Transactions: inflow vs outflow, rapid withdrawals, round amounts, refunds, cash-advance patterns.",
     required:["review"],
     chips:["Money movement in line with business","Rapid in-and-out (pass-through) funds","Round-amount transactions","Possible cash advancing: self-funded card payments","Refunds to different instrument"] },
+  { id:"txnlog", title:"Transaction log review", where:"Transaction log: every transaction on the account, amounts, dates, payers/payees, refunds and reversals.",
+    required:["review","onboarding"],
+    chips:["No transactions on the account"] },
   { id:"counterparty", title:"Counterparty review", where:"Buyers/payers: repeat payers, related parties, disputes and chargebacks.",
     required:[], requiredIf:"money",
     chips:["Counterparties look genuine","Same payer repeatedly","Counterparty linked to seller","High dispute/chargeback rate"] },

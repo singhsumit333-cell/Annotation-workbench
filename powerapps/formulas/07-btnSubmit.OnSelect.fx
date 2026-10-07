@@ -30,6 +30,8 @@ If(
       ServiceLogNotes:      If(full, LookUp(colReview, Id = "service").Notes, ""),
       MoneyMovementStatus:  LookUp(colReview, Id = "money").Status,
       MoneyMovementNotes:   If(full, LookUp(colReview, Id = "money").Notes, ""),
+      TransactionLogStatus: LookUp(colReview, Id = "txnlog").Status,
+      TransactionLogNotes:  If(full, LookUp(colReview, Id = "txnlog").Notes, ""),
       CounterpartyStatus:   LookUp(colReview, Id = "counterparty").Status,
       CounterpartyNotes:    If(full, LookUp(colReview, Id = "counterparty").Notes, ""),
       Decision:             LookUp(colDecisions, Key = varDecision).Label,
