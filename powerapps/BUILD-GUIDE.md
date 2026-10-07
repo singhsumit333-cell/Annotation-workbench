@@ -65,8 +65,8 @@ writes to them.
 |---|---|
 | Title (rename the display name to *Case ID*) | Single line of text |
 | Reviewer, CaseType, Decision, MissedAtFirstCheck | Single line of text |
-| ProfileStatus, PriorNotesStatus, DocumentsStatus, ATOStatus, LinkedReviewStatus, ServiceLogStatus, MoneyMovementStatus, TransactionLogStatus, CounterpartyStatus, ExternalSearchStatus | Single line of text |
-| ProfileNotes, PriorNotesNotes, DocumentsNotes, ATONotes, LinkedReviewNotes, ServiceLogNotes, MoneyMovementNotes, TransactionLogNotes, CounterpartyNotes, ExternalSearchNotes | Multiple lines of text (plain) |
+| ProfileStatus, PriorNotesStatus, DocumentsStatus, ATOStatus, LinkedReviewStatus, ServiceLogStatus, MoneyMovementStatus, TransactionLogStatus, CounterpartyStatus, ExternalSearchStatus, AccountAgeStatus, EmailDomainStatus, ProcessingStatus, BusinessModelStatus, MCCStatus | Single line of text |
+| ProfileNotes, PriorNotesNotes, DocumentsNotes, ATONotes, LinkedReviewNotes, ServiceLogNotes, MoneyMovementNotes, TransactionLogNotes, CounterpartyNotes, ExternalSearchNotes, AccountAgeNotes, EmailDomainNotes, ProcessingNotes, BusinessModelNotes, MCCNotes | Multiple lines of text (plain) |
 | Rationale, VerdictDetail, WarningsAcknowledged, FinalNote | Multiple lines of text (plain) |
 | HandleTimeMin | Number (1 decimal) |
 | CompletedOn | Date and time |
@@ -95,7 +95,7 @@ Use **classic** controls (Insert → Classic) so the property names below match.
 | `lblAppTitle` | Label | Text `"Annotation Workbench"`, FontWeight Bold, Size 16 |
 | `txtCaseId` | Text input | Default `varCaseId` · OnChange `Set(varCaseId, Self.Text)` · HintText `"Case / account ID"` |
 | `txtReviewer` | Text input | Default `varReviewer` · OnChange `Set(varReviewer, Self.Text)` |
-| `ddCaseType` | Drop down | Items `["Restriction review", "Onboarding"]` · Default `If(varCaseType = "onboarding", "Onboarding", "Restriction review")` · OnChange `Set(varCaseType, If(Self.Selected.Value = "Onboarding", "onboarding", "review"))` |
+| `ddCaseType` | Drop down | Items `["Restriction review", "Onboarding", "Payout review"]` · Default `Switch(varCaseType, "onboarding", "Onboarding", "payout", "Payout review", "Restriction review")` · OnChange: see below |
 | `tmrAHT` | Timer | Duration `1000` · Repeat `true` · AutoStart `true` · Visible `false` · OnTimerEnd `Set(varNow, Now())` |
 | `lblTimer` | Label | Text: see below · Color `If(DateDiff(varStart, varNow, TimeUnit.Minutes) >= varTargetAHTMin, clrWarn, clrAccent)` · Font size 18 |
 | `lblPrivacy` | Label | Under the title. Text: see below · Size 9 · Color `clrOk` · Fill `clrOkSoft` |
@@ -106,6 +106,18 @@ Use **classic** controls (Insert → Classic) so the property names below match.
 | `btnLoadExample` | Button | **Visible `false`** · OnSelect: `09-btnLoadExample.OnSelect.fx` |
 | `tglHasContent` | Toggle | **Visible `false`** · Default: `08-tglHasContent.Default.fx` |
 | `btnComplete` | Button | Text `"Complete annotation"` · Fill `clrAccent` · OnSelect: `05-btnComplete.OnSelect.fx` |
+
+**`ddCaseType.OnChange`** (switches the case type and clears a verdict the new type doesn't offer):
+
+```
+Set(varCaseType, Switch(Self.Selected.Value, "Onboarding", "onboarding", "Payout review", "payout", "review"));
+If(IsBlank(LookUp(colDecisions, Key = varDecision && varCaseType in Split(Types, ","))), Set(varDecision, ""))
+```
+
+Payout review shows its own seven sources (account age, email domain, processing, business model,
+MCC risk, linked accounts, ATO) and its own verdicts (Approve payout, Deny payout, Request additional
+information). Which sources and verdicts each case type gets is set by the `Types` column in
+`colSources` and `colDecisions` (App → OnStart).
 
 `lblPrivacy.Text`:
 
@@ -201,7 +213,7 @@ Fill `clrBg`, Color `Black`, BorderColor `clrLine`, RadiusTopLeft/… `15`, Size
 | Control | Type | Key properties |
 |---|---|---|
 | `lblVerdictHead` | Label | Text `"Verdict"`, FontWeight Semibold |
-| `galDecisions` | Blank **vertical** gallery | WrapCount `3`, TemplateSize `40`, Height `84`, Items `Sort(colDecisions, Order)` |
+| `galDecisions` | Blank **vertical** gallery | WrapCount `3`, TemplateSize `40`, Height `84`, Items `Sort(Filter(colDecisions, varCaseType in Split(Types, ",")), Order)` |
 | ↳ `btnDecision` | Button (inside) | Text `ThisItem.Label` · OnSelect `Set(varDecision, If(varDecision = ThisItem.Key, "", ThisItem.Key))` · Fill `If(varDecision = ThisItem.Key, clrAccent, White)` · Color `If(varDecision = ThisItem.Key, White, clrAccent)` · Size 10 |
 | `txtRationale` | Text input | Mode Multiline, Height `90`, Default `varRationale`, OnChange `Set(varRationale, Self.Text)`, HintText `"Why this decision? Tie it to the findings."`, BorderColor `If(varJump = "verdict", clrAccent, clrLine)` |
 | `lblDetail` | Label | Visible `!IsBlank(LookUp(colDecisions, Key = varDecision).Detail)`, Text `LookUp(colDecisions, Key = varDecision).Detail`, Size 9, Color `clrMuted` |

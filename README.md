@@ -27,7 +27,7 @@ Your company's data policy still decides which tools customer data may be entere
 | Notes and verdict contradict each other | Lift limitation with open concerns needs a mitigation rationale; Deny limitation with no concern raises a warning; Request additional information, Waiting for internal review, Sent BCL and Raised URP ticket each require their detail (requested info, pending team, BCL details, URP ticket number); open ATO/document concerns on a Lift raise warnings. |
 | Something is mentioned but not followed up | Keyword cross-check: e.g. "new device" written in the Service log while ATO is Clear → warning. |
 | Slow, inconsistent writing (AHT) | Quick-pick phrases per section, handle-time timer against a target, `Alt+1…9` / `Alt+0` jumps, `Ctrl+Enter` to complete, and a standard formatted note generated for copy-paste into the case tool. |
-| Onboarding vs restriction reviews | Case-type switch changes which sources are required. Verdict options are the same for both: Lift limitation, Deny limitation, Request additional information, Waiting for internal review, Sent BCL, Raised URP ticket. |
+| Different review types | Case type switch: **Restriction review** and **Onboarding** use the full source list (Onboarding requires fewer of them) with verdicts Lift limitation, Deny limitation, Request additional information, Waiting for internal review, Sent BCL, Raised URP ticket. **Payout review** shows only account age, email domain, processing, business model, MCC risk, linked accounts and ATO, with verdicts Approve payout, Deny payout, Request additional information. |
 
 Blockers (red) must be fixed. Warnings (amber) must each be acknowledged, and the
 acknowledgements are written into the final note, which helps QA see the reviewer
@@ -40,6 +40,7 @@ Everything team-specific lives in the **CONFIGURATION** block at the top of the
 
 - `SECTIONS` – sources, where-to-look hints, quick-pick phrases, which case types require them, `requiredIf` conditions.
 - `VERDICTS` – final verdict options, and which ones need an extra detail box.
+- `CASE_TYPES` – which sources (in order) and verdicts each case type shows.
 - `KEYWORDS` – words that should force a second look at a source.
 - `TARGET_AHT_MIN`, `MIN_NOTE_CHARS`.
 

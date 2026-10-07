@@ -1,9 +1,11 @@
-// galSources.Items  —  review rows plus a live IsReq (required) flag
+// galSources.Items  —  sources shown for the current case type, in that type's order, plus a live IsReq flag
 Sort(
-  AddColumns(colReview, IsReq,
+  AddColumns(
+    Filter(colReview, varCaseType in Split(Types, ",")),
+    IsReq,
     (varCaseType in Split(Required, ",")) ||
     Force ||
     (!IsBlank(RequiredIf) && LookUp(colReview As r, r.Id = RequiredIf).Status = "Concern")
   ),
-  Order
+  If(varCaseType = "payout", PayoutOrder, Order)
 )

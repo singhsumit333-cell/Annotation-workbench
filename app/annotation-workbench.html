@@ -136,7 +136,7 @@ pre.note{white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 var(--font-
       <div class="field"><label for="caseId">Case / account ID</label><input id="caseId" class="mono" placeholder="e.g. 1234-5678"></div>
       <div class="field"><label for="reviewer">Reviewer</label><input id="reviewer" placeholder="Your name"></div>
       <div class="field"><label for="caseType">Case type</label>
-        <select id="caseType"><option value="review">Restriction review</option><option value="onboarding">Onboarding</option></select></div>
+        <select id="caseType"><option value="review">Restriction review</option><option value="onboarding">Onboarding</option><option value="payout">Payout review</option></select></div>
       <div class="timer"><label class="sub" for="tbar">Handle time</label><div class="t" id="timer">00:00</div><div class="bar" id="tbar"><i></i></div><span class="kbd" id="target"></span></div>
       <div class="actions">
         <button class="btn" id="showExample" type="button">Show example</button>
@@ -177,10 +177,10 @@ const SECTIONS = [
     required:["review", "onboarding"],
     chips:["Profile details consistent with business type", "~Restriction reason: ", "!Account age < 90 days", "!Recent bank account change", "!Business category mismatch"] },
   { id:"linked", title:"Linked account review", where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts. Then review each linked account: status, restriction reasons, past verdicts.",
-    required:["review", "onboarding"],
+    required:["review","onboarding","payout"],
     chips:["No linked accounts", "Linked accounts found, all in good standing", "Linked account review shows no risk", "!Linked to restricted/closed account", "!Linked account restricted for fraud", "!Linked account closed by us", "!Shared bank account with other seller", "!Shared device/IP"] },
   { id:"ato", title:"ATO indicators", where:"Login & security history: password/email/phone changes, new devices, IP/geo, 2FA resets.",
-    required:["review"],
+    required:["review","payout"],
     chips:["No ATO indicators", "!Password reset followed by bank change", "!Login from new device/country", "!Email or phone changed recently", "!2FA reset"] },
   { id:"txnlog", title:"Transaction log review", where:"Transaction log: every transaction on the account, amounts, dates, payers/payees, refunds and reversals.",
     required:["review", "onboarding"],
@@ -203,9 +203,25 @@ const SECTIONS = [
   { id:"external", title:"External search", where:"Your own search outside our tools: business website, registries, reviews, social media, news. For a business account, write what you found.",
     required:["review", "onboarding"],
     chips:["~It's a personal account"] },
+  // ---- Payout review only
+  { id:"acctAge", title:"Account age", where:"Profile page: account creation date. Is it a newly created account or an established one?",
+    required:["payout"],
+    chips:["Established account (not newly created)", "~Newly created account", "~Account created on: "] },
+  { id:"email", title:"Email domain", where:"Account email: free email provider (Gmail, Yahoo, Outlook\u2026) or a business domain?",
+    required:["payout"],
+    chips:["Business email domain", "~Free email domain", "!Email domain does not match business"] },
+  { id:"processing", title:"Processing", where:"How much the account has processed: volume, count, trend, and how it compares to the payout requested.",
+    required:["payout"],
+    chips:["Processing in line with business", "~No processing on the account", "~Processing volume: ", "!Sudden spike in processing before payout"] },
+  { id:"bizModel", title:"Business model", where:"Is the business model verified? A website helps but is not required.",
+    required:["payout"],
+    chips:["Business model verified", "~Website found", "~No website (not required)", "!Business model not verified"] },
+  { id:"mcc", title:"MCC risk", where:"Merchant category code: is it low, medium or high risk?",
+    required:["payout"],
+    chips:["Low-risk MCC", "~Medium-risk MCC", "!High-risk MCC", "!MCC does not match business"] },
 ];
 
-// Final verdict options (same for both case types).
+// Final verdict options. Which ones each case type offers is set in CASE_TYPES below.
 //   clears: releases the account -> open concerns need a mitigation in the rationale
 //   keeps : keeps the limitation -> at least one source should be marked Concern
 //   detail: extra field that must be filled when this verdict is picked
@@ -220,8 +236,22 @@ const VERDICTS = [
     detail:"BCL details", placeholder:"e.g. BCL reference, date sent, reason" },
   { key:"urp",      label:"Raised URP ticket",
     detail:"URP ticket number and reason", placeholder:"e.g. URP-123456, reason for raising" },
+  { key:"approvePayout", label:"Approve payout", clears:true },
+  { key:"denyPayout",    label:"Deny payout",    keeps:true },
 ];
 const verdictOf = key => VERDICTS.find(v => v.key === key);
+
+// Case types: which sections appear (in this order) and which verdicts are offered.
+const FULL_REVIEW = ["profile","linked","ato","txnlog","counterparty","money","service","prior","documents","external"];
+const CASE_TYPES = {
+  review:     { label:"Restriction review", sections:FULL_REVIEW, verdicts:["lift","deny","rfi","internal","bcl","urp"] },
+  onboarding: { label:"Onboarding",         sections:FULL_REVIEW, verdicts:["lift","deny","rfi","internal","bcl","urp"] },
+  payout:     { label:"Payout review",      sections:["acctAge","email","processing","bizModel","mcc","linked","ato"],
+                verdicts:["approvePayout","denyPayout","rfi"] },
+};
+const caseType = () => CASE_TYPES[state.caseType] || CASE_TYPES.review;
+const activeSections = () => caseType().sections.map(id => SECTIONS.find(s => s.id === id));
+const activeVerdicts = () => caseType().verdicts.map(verdictOf);
 
 // If these words appear anywhere in the notes, the named source should not be Clear / N/A.
 const KEYWORDS = [
@@ -272,7 +302,7 @@ function evaluate(){
   const blockers = [], warnings = [], secState = {};
   const add = (list, sec, msg) => list.push({sec, msg});
 
-  for (const sec of SECTIONS){
+  for (const sec of activeSections()){
     const st = state.sections[sec.id], req = isRequired(sec), txt = st.text.trim();
     // A source counts as covered when it has a result (Clear / Concern / N/A) OR the reviewer
     // has written their own note. Quick-picks and result buttons are shortcuts, not requirements.
@@ -292,10 +322,10 @@ function evaluate(){
   }
 
   // Keyword cross-checks: something mentioned elsewhere that contradicts a Clear / N/A source.
-  const allText = SECTIONS.map(s=>[s.id, state.sections[s.id].text]).concat([["verdict", state.verdict.rationale]]);
+  const allText = activeSections().map(s=>[s.id, state.sections[s.id].text]).concat([["verdict", state.verdict.rationale]]);
   for (const k of KEYWORDS){
     const target = state.sections[k.sec];
-    if (target.status==="concern") continue;
+    if (!caseType().sections.includes(k.sec) || target.status==="concern") continue;
     for (const [id, text] of allText){
       if (id === k.sec) continue;
       const hit = k.words.find(w => text.toLowerCase().includes(w));
@@ -304,7 +334,7 @@ function evaluate(){
   }
 
   // Verdict consistency
-  const v = state.verdict, concerns = SECTIONS.filter(s=>state.sections[s.id].status==="concern");
+  const v = state.verdict, concerns = activeSections().filter(s=>state.sections[s.id].status==="concern");
   if (!v.decision){ add(blockers,"verdict","Choose a verdict."); }
   else {
     if (v.rationale.trim().length < 25) add(blockers,"verdict","Explain the verdict in the rationale (why this decision).");
@@ -320,7 +350,7 @@ function evaluate(){
     if (vd.clears && state.sections.documents.status==="concern")
       add(warnings,"verdict","Document concern is open. Consider Request additional info instead.");
     if (vd.keeps && !concerns.length)
-      add(warnings,"verdict","Deny limitation, but no source is marked Concern. Make sure the notes show the evidence for it.");
+      add(warnings,"verdict",`${vd.label}, but no source is marked Concern. Make sure the notes show the evidence for it.`);
     if (/rfi|pending/i.test(state.sections.prior.text) && v.decision!=="rfi" && state.sections.documents.status!=="clear")
       add(warnings,"documents","Previous notes mention a pending RFI. Confirm whether those documents arrived.");
   }
@@ -335,7 +365,7 @@ function evaluate(){
    ============================================================ */
 function renderSections(){
   const host = $("#sections"); host.innerHTML = "";
-  SECTIONS.forEach((sec, i) => {
+  activeSections().forEach((sec, i) => {
     const st = state.sections[sec.id];
     const el = document.createElement("section");
     el.className = "sec"; el.id = "sec-"+sec.id;
@@ -374,8 +404,8 @@ function renderSections(){
   const v = state.verdict, el = document.createElement("section");
   el.className = "sec"; el.id = "sec-verdict";
   el.innerHTML = `
-    <div class="sec-head"><span class="num">${String(SECTIONS.length+1).padStart(2,"0")}</span><h2>Verdict</h2><span class="tag req">Required</span></div>
-    <div class="decisions" role="group" aria-label="Verdict">${VERDICTS.map(d=>`<button type="button" data-d="${d.key}">${esc(d.label)}</button>`).join("")}</div>
+    <div class="sec-head"><span class="num">${String(activeSections().length+1).padStart(2,"0")}</span><h2>Verdict</h2><span class="tag req">Required</span></div>
+    <div class="decisions" role="group" aria-label="Verdict">${activeVerdicts().map(d=>`<button type="button" data-d="${d.key}">${esc(d.label)}</button>`).join("")}</div>
     <span class="sub">Rationale</span>
     <textarea id="rationale" placeholder="Why this decision? Tie it to the findings above.">${esc(v.rationale)}</textarea>
     <div id="detailBox"><label class="sub" for="detail" id="detailLabel"></label>
@@ -397,7 +427,7 @@ function insertChip(ta, text){
 function update(){
   const res = evaluate();
   // section chrome
-  for (const sec of SECTIONS){
+  for (const sec of activeSections()){
     const el = $("#sec-"+sec.id), st = state.sections[sec.id];
     el.dataset.state = res.secState[sec.id];
     el.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(st.status===b.dataset.v)));
@@ -413,7 +443,7 @@ function update(){
   $("#exampleBanner").hidden = !state.example;
 
   // checker list
-  const ids = SECTIONS.map(s=>s.id).concat("verdict");
+  const ids = caseType().sections.concat("verdict");
   const counted = ids.filter(id => id==="verdict" || isRequired(SECTIONS.find(s=>s.id===id)) || state.sections[id].status || state.sections[id].text.trim());
   const done = counted.filter(id => ["done","warn"].includes(res.secState[id])).length;
   $("#score").textContent = `${done}/${counted.length}`;
@@ -448,11 +478,11 @@ function buildNote(res){
   const L = { clear:"CLEAR", concern:"CONCERN", na:"N/A" };
   const d = verdictOf(state.verdict.decision);
   const lines = [
-    `CASE ${state.caseId || "(no ID)"} | ${state.caseType==="review"?"Restriction review":"Onboarding"} | ${state.reviewer || "(reviewer)"} | ${new Date().toLocaleString()}`,
+    `CASE ${state.caseId || "(no ID)"} | ${caseType().label} | ${state.reviewer || "(reviewer)"} | ${new Date().toLocaleString()}`,
     "",
   ];
   let n = 1;
-  for (const sec of SECTIONS){
+  for (const sec of activeSections()){
     const st = state.sections[sec.id];
     if (!st.status && !st.text.trim()) continue;
     lines.push(`${n++}. ${sec.title.toUpperCase()}${st.status ? ` [${L[st.status]}]` : ""}: ${st.text.trim()}`);
@@ -519,7 +549,10 @@ for (const k of CASE_FIELDS){
   const el = $("#"+k);
   el.addEventListener(k==="caseType"?"change":"input", () => {
     state[k] = el.value;
-    if (k==="caseType") renderSections();
+    if (k==="caseType"){
+      if (!caseType().verdicts.includes(state.verdict.decision)) state.verdict.decision = "";
+      renderSections();
+    }
     update();
   });
 }
@@ -555,7 +588,7 @@ setInterval(() => {
 document.addEventListener("keydown", e => {
   if ((e.ctrlKey||e.metaKey) && e.key==="Enter"){ e.preventDefault(); complete(); }
   if (e.key==="Escape") closeDlg();
-  if (e.altKey && /^[1-9]$/.test(e.key)){ e.preventDefault(); const ids = SECTIONS.map(s=>s.id).concat("verdict"); const id = ids[+e.key-1]; if (id) jump(id); }
+  if (e.altKey && /^[1-9]$/.test(e.key)){ e.preventDefault(); const ids = caseType().sections.concat("verdict"); const id = ids[+e.key-1]; if (id) jump(id); }
   if (e.altKey && e.key==="0"){ e.preventDefault(); jump("verdict"); }
 });
 

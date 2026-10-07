@@ -1,10 +1,11 @@
 // txtNote.Default  —  the final annotation in your team's standard format
 "CASE " & Coalesce(varCaseId, "(no ID)") & " | " &
-If(varCaseType = "review", "Restriction review", "Onboarding") & " | " &
+Switch(varCaseType, "onboarding", "Onboarding", "payout", "Payout review", "Restriction review") & " | " &
 varReviewer & " | " & Text(Now(), "dd mmm yyyy hh:mm") &
 Char(10) & Char(10) &
 Concat(
-  Filter(Sort(colReview, Order), !IsBlank(Status) || !IsBlank(Trim(Notes))),
+  Filter(Sort(colReview, If(varCaseType = "payout", PayoutOrder, Order)),
+         varCaseType in Split(Types, ",") && (!IsBlank(Status) || !IsBlank(Trim(Notes)))),
   Upper(Title) & If(IsBlank(Status), "", " [" & Upper(Status) & "]") & ": " & Trim(Notes),
   Char(10)
 ) &

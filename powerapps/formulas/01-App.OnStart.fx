@@ -15,6 +15,8 @@ Set(varMinNoteChars, 3);      // shortest acceptable note per source
 Set(varSaveMode, "metrics");
 
 // Review sources.
+//   Types       : case types that show this source ("review", "onboarding", "payout")
+//   Order       : position in Restriction review / Onboarding; PayoutOrder: position in Payout review
 //   Required   : case types where the source is mandatory ("review", "onboarding")
 //   RequiredIf : Id of another source; this one becomes mandatory when that one is "Concern"
 //   Chips      : quick-pick phrases separated by |
@@ -22,59 +24,82 @@ Set(varSaveMode, "metrics");
 //                prefix "~" = neutral phrase (does not set status)
 //                no prefix  = clear phrase (sets status to Clear if empty)
 ClearCollect(colSources,
-  {Order:1, Id:"profile", Title:"Account profile review",
+  {Order:1, Id:"profile", Types:"review,onboarding", PayoutOrder:0, Title:"Account profile review",
    Where:"Profile page: business type, account age, ownership, contact & bank details, and why the account was restricted.",
    Required:"review,onboarding", RequiredIf:"",
    Chips:"Profile details consistent with business type|~Restriction reason: |!Account age < 90 days|!Recent bank account change|!Business category mismatch"},
-  {Order:2, Id:"linked", Title:"Linked account review",
+  {Order:2, Id:"linked", Types:"review,onboarding,payout", PayoutOrder:6, Title:"Linked account review",
    Where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts. Then review each linked account: status, restriction reasons, past verdicts.",
-   Required:"review,onboarding", RequiredIf:"",
+   Required:"review,onboarding,payout", RequiredIf:"",
    Chips:"No linked accounts|Linked accounts found, all in good standing|Linked account review shows no risk|!Linked to restricted/closed account|!Linked account restricted for fraud|!Linked account closed by us|!Shared bank account with other seller|!Shared device/IP"},
-  {Order:3, Id:"ato", Title:"ATO indicators",
+  {Order:3, Id:"ato", Types:"review,onboarding,payout", PayoutOrder:7, Title:"ATO indicators",
    Where:"Login & security history: password/email/phone changes, new devices, IP/geo, 2FA resets.",
-   Required:"review", RequiredIf:"",
+   Required:"review,payout", RequiredIf:"",
    Chips:"No ATO indicators|!Password reset followed by bank change|!Login from new device/country|!Email or phone changed recently|!2FA reset"},
-  {Order:4, Id:"txnlog", Title:"Transaction log review",
+  {Order:4, Id:"txnlog", Types:"review,onboarding", PayoutOrder:0, Title:"Transaction log review",
    Where:"Transaction log: every transaction on the account, amounts, dates, payers/payees, refunds and reversals.",
    Required:"review,onboarding", RequiredIf:"",
    Chips:"No transactions on the account"},
-  {Order:5, Id:"counterparty", Title:"Counterparty review",
+  {Order:5, Id:"counterparty", Types:"review,onboarding", PayoutOrder:0, Title:"Counterparty review",
    Where:"Buyers/payers: repeat payers, related parties, disputes and chargebacks.",
    Required:"", RequiredIf:"money",
    Chips:"Counterparties look genuine|!Same payer repeatedly|!Counterparty linked to seller|!High dispute/chargeback rate"},
-  {Order:6, Id:"money", Title:"Money movement, cash advancing & P2P",
+  {Order:6, Id:"money", Types:"review,onboarding", PayoutOrder:0, Title:"Money movement, cash advancing & P2P",
    Where:"Transactions: inflow vs outflow, rapid withdrawals, round amounts, refunds, cash-advance patterns, personal (P2P) transfers.",
    Required:"review", RequiredIf:"",
    Chips:"Money movement in line with business|No P2P activity|!Rapid in-and-out (pass-through) funds|!Round-amount transactions|!Possible cash advancing: self-funded card payments|!P2P / personal transfers through the account|!Refunds to different instrument"},
-  {Order:7, Id:"service", Title:"Service log",
+  {Order:7, Id:"service", Types:"review,onboarding", PayoutOrder:0, Title:"Service log",
    Where:"Contacts: calls, chats, emails with the seller and what they claimed.",
    Required:"review,onboarding", RequiredIf:"",
    Chips:"No contacts on record|~Seller contacted about restriction|Seller explanation consistent with evidence|!Seller explanation inconsistent with evidence|!Threat of chargeback/legal"},
-  {Order:8, Id:"prior", Title:"Previous review notes",
+  {Order:8, Id:"prior", Types:"review,onboarding", PayoutOrder:0, Title:"Previous review notes",
    Where:"Case history: earlier teammate annotations, open RFIs, past verdicts and escalations.",
    Required:"review,onboarding", RequiredIf:"",
    Chips:"No prior reviews|Prior review cleared with no concerns|!Pending RFI from previous review|!Previously escalated|~Prior verdict: "},
-  {Order:9, Id:"documents", Title:"Documents provided by merchant",
+  {Order:9, Id:"documents", Types:"review,onboarding", PayoutOrder:0, Title:"Documents provided by merchant",
    Where:"Document store: ID, proof of address, business registration, bank statements, invoices.",
    Required:"review,onboarding", RequiredIf:"",
    Chips:"All requested documents received and valid|ID verified|Proof of address verified|!Document appears altered|!Document name mismatch with account|!Documents outstanding: "},
-  {Order:10, Id:"external", Title:"External search",
+  {Order:10, Id:"external", Types:"review,onboarding", PayoutOrder:0, Title:"External search",
    Where:"Your own search outside our tools: business website, registries, reviews, social media, news. For a business account, write what you found.",
    Required:"review,onboarding", RequiredIf:"",
-   Chips:"~It's a personal account"}
+   Chips:"~It's a personal account"},
+  // ---- Payout review only
+  {Order:11, Id:"acctAge", Types:"payout", PayoutOrder:1, Title:"Account age",
+   Where:"Profile page: account creation date. Is it a newly created account or an established one?",
+   Required:"payout", RequiredIf:"",
+   Chips:"Established account (not newly created)|~Newly created account|~Account created on: "},
+  {Order:12, Id:"email", Types:"payout", PayoutOrder:2, Title:"Email domain",
+   Where:"Account email: free email provider (Gmail, Yahoo, Outlook...) or a business domain?",
+   Required:"payout", RequiredIf:"",
+   Chips:"Business email domain|~Free email domain|!Email domain does not match business"},
+  {Order:13, Id:"processing", Types:"payout", PayoutOrder:3, Title:"Processing",
+   Where:"How much the account has processed: volume, count, trend, and how it compares to the payout requested.",
+   Required:"payout", RequiredIf:"",
+   Chips:"Processing in line with business|~No processing on the account|~Processing volume: |!Sudden spike in processing before payout"},
+  {Order:14, Id:"bizModel", Types:"payout", PayoutOrder:4, Title:"Business model",
+   Where:"Is the business model verified? A website helps but is not required.",
+   Required:"payout", RequiredIf:"",
+   Chips:"Business model verified|~Website found|~No website (not required)|!Business model not verified"},
+  {Order:15, Id:"mcc", Types:"payout", PayoutOrder:5, Title:"MCC risk",
+   Where:"Merchant category code: is it low, medium or high risk?",
+   Required:"payout", RequiredIf:"",
+   Chips:"Low-risk MCC|~Medium-risk MCC|!High-risk MCC|!MCC does not match business"}
 );
 
-// Final verdict options (same for both case types).
+// Final verdict options. Types = case types that offer it.
 //   Clears : releases the account -> open concerns need a mitigation in the rationale
 //   Keeps  : keeps the limitation -> warns if no source is marked Concern
 //   Detail : extra field that must be filled when this verdict is picked ("" = none); Hint = its example text
 ClearCollect(colDecisions,
-  {Order:1, Key:"lift",     Label:"Lift limitation",                Clears:true,  Keeps:false, Detail:"",                                     Hint:""},
-  {Order:2, Key:"deny",     Label:"Deny limitation",                Clears:false, Keeps:true,  Detail:"",                                     Hint:""},
-  {Order:3, Key:"rfi",      Label:"Request additional information", Clears:false, Keeps:false, Detail:"Information requested from seller",    Hint:"e.g. Bank statement for last 3 months; invoice for order #..."},
-  {Order:4, Key:"internal", Label:"Waiting for internal review",    Clears:false, Keeps:false, Detail:"What is pending, and with which team", Hint:"e.g. Pending linked-account review by the investigations team"},
-  {Order:5, Key:"bcl",      Label:"Sent BCL",                       Clears:false, Keeps:false, Detail:"BCL details",                          Hint:"e.g. BCL reference, date sent, reason"},
-  {Order:6, Key:"urp",      Label:"Raised URP ticket",              Clears:false, Keeps:false, Detail:"URP ticket number and reason",         Hint:"e.g. URP-123456, reason for raising"}
+  {Order:1, Key:"lift", Types:"review,onboarding",     Label:"Lift limitation",                Clears:true,  Keeps:false, Detail:"",                                     Hint:""},
+  {Order:2, Key:"deny", Types:"review,onboarding",     Label:"Deny limitation",                Clears:false, Keeps:true,  Detail:"",                                     Hint:""},
+  {Order:3, Key:"rfi", Types:"review,onboarding,payout",      Label:"Request additional information", Clears:false, Keeps:false, Detail:"Information requested from seller",    Hint:"e.g. Bank statement for last 3 months; invoice for order #..."},
+  {Order:4, Key:"internal", Types:"review,onboarding", Label:"Waiting for internal review",    Clears:false, Keeps:false, Detail:"What is pending, and with which team", Hint:"e.g. Pending linked-account review by the investigations team"},
+  {Order:5, Key:"bcl", Types:"review,onboarding",      Label:"Sent BCL",                       Clears:false, Keeps:false, Detail:"BCL details",                          Hint:"e.g. BCL reference, date sent, reason"},
+  {Order:6, Key:"urp", Types:"review,onboarding",      Label:"Raised URP ticket",              Clears:false, Keeps:false, Detail:"URP ticket number and reason",         Hint:"e.g. URP-123456, reason for raising"},
+  {Order:7, Key:"approvePayout", Types:"payout", Label:"Approve payout", Clears:true,  Keeps:false, Detail:"", Hint:""},
+  {Order:8, Key:"denyPayout",    Types:"payout", Label:"Deny payout",    Clears:false, Keeps:true,  Detail:"", Hint:""}
 );
 
 // If any of these words appear in OTHER sections' notes (or the rationale),

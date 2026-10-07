@@ -3,16 +3,16 @@
 // Add your own SOP rules as extra rows in the verdict-rules Table() at the bottom.
 With(
   {
-    rs: AddColumns(colReview, IsReq,
+    rs: AddColumns(Filter(colReview, varCaseType in Split(Types, ",")), IsReq,
           (varCaseType in Split(Required, ",")) ||
           Force ||
           (!IsBlank(RequiredIf) && LookUp(colReview As r, r.Id = RequiredIf).Status = "Concern")),
-    concerns: Filter(colReview, Status = "Concern"),
+    concerns: Filter(colReview, Status = "Concern" && varCaseType in Split(Types, ",")),
     dec: LookUp(colDecisions, Key = varDecision),
-    hits: ForAll(colKeywords As k,
+    hits: ForAll(Filter(colKeywords As kw, varCaseType in Split(LookUp(colSources, Id = kw.Sec).Types, ",")) As k,
             {Sec: k.Sec,
              Hit: First(Filter(Split(k.Words, "|") As w,
-                    w.Value in (Concat(Filter(colReview, Id <> k.Sec), Notes & " ") & " " & varRationale))).Value})
+                    w.Value in (Concat(Filter(colReview, Id <> k.Sec && varCaseType in Split(Types, ",")), Notes & " ") & " " & varRationale))).Value})
   },
   Sort(
     Ungroup(
@@ -63,7 +63,7 @@ With(
                Show: dec.Clears && LookUp(colReview, Id = "ato").Status = "Concern"},
               {Sev: "Check", Sec: "verdict", Msg: "Document concern is open. Consider Request additional information instead.",
                Show: dec.Clears && LookUp(colReview, Id = "documents").Status = "Concern"},
-              {Sev: "Check", Sec: "verdict", Msg: "Deny limitation, but no source is marked Concern. Make sure the notes show the evidence for it.",
+              {Sev: "Check", Sec: "verdict", Msg: dec.Label & ", but no source is marked Concern. Make sure the notes show the evidence for it.",
                Show: dec.Keeps && CountRows(concerns) = 0},
               {Sev: "Check", Sec: "documents", Msg: "Previous notes mention a pending RFI. Confirm whether those documents arrived.",
                Show: !IsBlank(varDecision) && varDecision <> "rfi" && LookUp(colReview, Id = "documents").Status <> "Clear" &&
