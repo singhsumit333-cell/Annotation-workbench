@@ -183,9 +183,9 @@ const SECTIONS = [
   { id:"ato", title:"ATO indicators", where:"Login & security history: password/email/phone changes, new devices, IP/geo, 2FA resets.",
     required:["review"],
     chips:["No ATO indicators","Password reset followed by bank change","Login from new device/country","Email or phone changed recently","2FA reset"] },
-  { id:"linked", title:"Linked account checks", where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts.",
+  { id:"linked", title:"Linked account review", where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts. Then review each linked account: status, restriction reasons, past verdicts.",
     required:["review","onboarding"],
-    chips:["No linked accounts","Linked accounts found, all in good standing","Linked to restricted/closed account","Shared bank account with other seller","Shared device/IP"] },
+    chips:["No linked accounts","Linked accounts found, all in good standing","Linked account review shows no risk","Linked to restricted/closed account","Linked account restricted for fraud","Linked account closed by us","Shared bank account with other seller","Shared device/IP"] },
   { id:"service", title:"Service log", where:"Contacts: calls, chats, emails with the seller and what they claimed.",
     required:["review","onboarding"],
     chips:["No contacts on record","Seller contacted about restriction","Seller explanation consistent with evidence","Seller explanation inconsistent with evidence","Threat of chargeback/legal"] },
@@ -195,9 +195,6 @@ const SECTIONS = [
   { id:"counterparty", title:"Counterparty review", where:"Buyers/payers: repeat payers, related parties, disputes and chargebacks.",
     required:[], requiredIf:"money",
     chips:["Counterparties look genuine","Same payer repeatedly","Counterparty linked to seller","High dispute/chargeback rate"] },
-  { id:"linkedReview", title:"Linked account review", where:"Review each linked account flagged above: status, restriction reasons, verdicts.",
-    required:[], requiredIf:"linked",
-    chips:["Linked account restricted for fraud","Linked account closed by us","Linked account review shows no risk"] },
 ];
 
 // Final verdict options (same for both case types).
@@ -211,8 +208,8 @@ const VERDICTS = [
     detail:"Information requested from seller", placeholder:"e.g. Bank statement for last 3 months; invoice for order #…" },
   { key:"internal", label:"Waiting for internal review",
     detail:"What is pending, and with which team", placeholder:"e.g. Pending linked-account review by the investigations team" },
-  { key:"pcl",      label:"Sent PCL",
-    detail:"PCL details", placeholder:"e.g. PCL reference, date sent, reason" },
+  { key:"bcl",      label:"Sent BCL",
+    detail:"BCL details", placeholder:"e.g. BCL reference, date sent, reason" },
   { key:"urp",      label:"Raised URP ticket",
     detail:"URP ticket number and reason", placeholder:"e.g. URP-123456, reason for raising" },
 ];
@@ -357,7 +354,7 @@ function renderSections(){
     ta.addEventListener("input", () => { st.text = ta.value; update(); });
     el.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
       insertChip(ta, c.textContent); st.text = ta.value;
-      if (!st.status) st.status = /^no |consistent|in line|genuine|verified|all requested|cleared|no risk/i.test(c.textContent) ? "clear" : "concern";
+      if (!st.status) st.status = /^no |consistent|in line|genuine|verified|all requested|cleared|no risk|good standing/i.test(c.textContent) ? "clear" : "concern";
       update();
     }));
     const f = el.querySelector(`#force-${sec.id}`);

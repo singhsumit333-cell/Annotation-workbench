@@ -65,8 +65,8 @@ writes to them.
 |---|---|
 | Title (rename the display name to *Case ID*) | Single line of text |
 | Reviewer, CaseType, Decision, MissedAtFirstCheck | Single line of text |
-| ProfileStatus, PriorNotesStatus, DocumentsStatus, ATOStatus, LinkedChecksStatus, ServiceLogStatus, MoneyMovementStatus, CounterpartyStatus, LinkedReviewStatus | Single line of text |
-| ProfileNotes, PriorNotesNotes, DocumentsNotes, ATONotes, LinkedChecksNotes, ServiceLogNotes, MoneyMovementNotes, CounterpartyNotes, LinkedReviewNotes | Multiple lines of text (plain) |
+| ProfileStatus, PriorNotesStatus, DocumentsStatus, ATOStatus, LinkedReviewStatus, ServiceLogStatus, MoneyMovementStatus, CounterpartyStatus | Single line of text |
+| ProfileNotes, PriorNotesNotes, DocumentsNotes, ATONotes, LinkedReviewNotes, ServiceLogNotes, MoneyMovementNotes, CounterpartyNotes | Multiple lines of text (plain) |
 | Rationale, VerdictDetail, WarningsAcknowledged, FinalNote | Multiple lines of text (plain) |
 | HandleTimeMin | Number (1 decimal) |
 | CompletedOn | Date and time |

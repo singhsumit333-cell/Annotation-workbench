@@ -38,10 +38,10 @@ ClearCollect(colSources,
    Where:"Login & security history: password/email/phone changes, new devices, IP/geo, 2FA resets.",
    Required:"review", RequiredIf:"",
    Chips:"No ATO indicators|!Password reset followed by bank change|!Login from new device/country|!Email or phone changed recently|!2FA reset"},
-  {Order:5, Id:"linked", Title:"Linked account checks",
-   Where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts.",
+  {Order:5, Id:"linked", Title:"Linked account review",
+   Where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts. Then review each linked account: status, restriction reasons, past verdicts.",
    Required:"review,onboarding", RequiredIf:"",
-   Chips:"No linked accounts|Linked accounts found, all in good standing|!Linked to restricted/closed account|!Shared bank account with other seller|!Shared device/IP"},
+   Chips:"No linked accounts|Linked accounts found, all in good standing|Linked account review shows no risk|!Linked to restricted/closed account|!Linked account restricted for fraud|!Linked account closed by us|!Shared bank account with other seller|!Shared device/IP"},
   {Order:6, Id:"service", Title:"Service log",
    Where:"Contacts: calls, chats, emails with the seller and what they claimed.",
    Required:"review,onboarding", RequiredIf:"",
@@ -53,11 +53,7 @@ ClearCollect(colSources,
   {Order:8, Id:"counterparty", Title:"Counterparty review",
    Where:"Buyers/payers: repeat payers, related parties, disputes and chargebacks.",
    Required:"", RequiredIf:"money",
-   Chips:"Counterparties look genuine|!Same payer repeatedly|!Counterparty linked to seller|!High dispute/chargeback rate"},
-  {Order:9, Id:"linkedReview", Title:"Linked account review",
-   Where:"Review each linked account flagged above: status, restriction reasons, verdicts.",
-   Required:"", RequiredIf:"linked",
-   Chips:"Linked account review shows no risk|!Linked account restricted for fraud|!Linked account closed by us"}
+   Chips:"Counterparties look genuine|!Same payer repeatedly|!Counterparty linked to seller|!High dispute/chargeback rate"}
 );
 
 // Final verdict options (same for both case types).
@@ -69,7 +65,7 @@ ClearCollect(colDecisions,
   {Order:2, Key:"deny",     Label:"Deny limitation",                Clears:false, Keeps:true,  Detail:"",                                     Hint:""},
   {Order:3, Key:"rfi",      Label:"Request additional information", Clears:false, Keeps:false, Detail:"Information requested from seller",    Hint:"e.g. Bank statement for last 3 months; invoice for order #..."},
   {Order:4, Key:"internal", Label:"Waiting for internal review",    Clears:false, Keeps:false, Detail:"What is pending, and with which team", Hint:"e.g. Pending linked-account review by the investigations team"},
-  {Order:5, Key:"pcl",      Label:"Sent PCL",                       Clears:false, Keeps:false, Detail:"PCL details",                          Hint:"e.g. PCL reference, date sent, reason"},
+  {Order:5, Key:"bcl",      Label:"Sent BCL",                       Clears:false, Keeps:false, Detail:"BCL details",                          Hint:"e.g. BCL reference, date sent, reason"},
   {Order:6, Key:"urp",      Label:"Raised URP ticket",              Clears:false, Keeps:false, Detail:"URP ticket number and reason",         Hint:"e.g. URP-123456, reason for raising"}
 );
 
