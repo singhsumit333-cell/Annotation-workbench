@@ -49,10 +49,12 @@ Add your SOP's rules to `evaluate()` in the same file (each rule is a few lines)
 
 1. **Pilot as-is**: share the HTML file on SharePoint/Teams; reviewers open it in Edge.
 2. **Power Apps version** (if IT prefers Microsoft 365): see
-   [`powerapps/BUILD-GUIDE.md`](powerapps/BUILD-GUIDE.md). It has the same sources and rules,
-   saves every completed case to a SharePoint list, and records handle time and which checks
-   were missed at first try. All formulas are in `powerapps/formulas/`, and
-   `powerapps/create-sharepoint-list.ps1` creates the list.
+   [`powerapps/BUILD-GUIDE.md`](powerapps/BUILD-GUIDE.md). It has the same sources and rules.
+   Power Apps runs in Microsoft 365, so it can't be offline. Instead, one setting
+   (`varSaveMode`) decides what completed cases save to a SharePoint list: nothing, check
+   results and handle time only (the default, no customer data), or the full case. Cases are
+   erased from the app when cleared, and it asks before clearing or closing a case in progress.
+   All formulas are in `powerapps/formulas/`, and `powerapps/create-sharepoint-list.ps1` creates the list.
 3. **Word alternative**: a .dotm template with content controls per section and a
    VBA macro on save that checks for empty controls – works, but it is the weakest
    option (macros are often blocked, no live checking).

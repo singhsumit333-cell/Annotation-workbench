@@ -7,6 +7,13 @@
 Set(varTargetAHTMin, 20);     // target handle time in minutes
 Set(varMinNoteChars, 12);     // shortest acceptable note per source
 
+// What "Save & start next case" writes to the RiskAnnotations list:
+//   "none"    : nothing. The note is only copied; the case is erased when cleared.
+//   "metrics" : check results, verdict, handle time and missed checks only.
+//               No case ID, no notes, no rationale, no final note (no customer data).
+//   "full"    : everything, including case ID, notes and the final note.
+Set(varSaveMode, "metrics");
+
 // Review sources.
 //   Required   : case types where the source is mandatory ("review", "onboarding")
 //   RequiredIf : Id of another source; this one becomes mandatory when that one is "Concern"
@@ -82,10 +89,10 @@ Set(clrOk,      RGBA(44,122,75,1));   Set(clrOkSoft,   RGBA(225,241,231,1));
 Set(clrWarn,    RGBA(154,92,0,1));    Set(clrWarnSoft, RGBA(251,239,217,1));
 Set(clrBad,     RGBA(176,39,31,1));   Set(clrBadSoft,  RGBA(249,225,223,1));
 
-// Start an empty case (same as btnNewCase.OnSelect)
+// Start an empty case (same as btnResetCase.OnSelect)
 Set(varReviewer, User().FullName);
 Set(varCaseType, "review");
 ClearCollect(colReview, AddColumns(colSources, Status, "", Notes, "", Force, false));
 Set(varCaseId, ""); Set(varDecision, ""); Set(varRationale, ""); Set(varRFI, "");
 Set(varPopup, ""); Set(varJump, ""); Set(varChecked, false); Set(varFirstMissed, "");
-Set(varStart, Now()); Set(varNow, Now());
+Set(varStart, Now()); Set(varNow, Now()); Set(varExample, false); Set(varCopied, false);
