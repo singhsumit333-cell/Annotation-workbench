@@ -5,7 +5,7 @@
 
 // ===== CONFIGURATION (team lead edits here) =====================
 Set(varTargetAHTMin, 20);     // target handle time in minutes
-Set(varMinNoteChars, 12);     // shortest acceptable note per source
+Set(varMinNoteChars, 3);      // shortest acceptable note per source
 
 // What "Save & start next case" writes to the RiskAnnotations list:
 //   "none"    : nothing. The note is only copied; the case is erased when cleared.

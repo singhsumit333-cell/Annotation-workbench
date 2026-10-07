@@ -22,7 +22,7 @@ Your company's data policy still decides which tools customer data may be entere
 
 | Problem | How the workbench handles it |
 |---|---|
-| Reviewer forgets a source (service log, linked accounts, ATO…) | Every source is a section with **Clear / Concern / N/A**. Required ones block completion until filled. |
+| Reviewer forgets a source (service log, linked accounts, ATO…) | Every source is a section. It counts as covered when the reviewer writes their own note **or** picks Clear / Concern / N/A or a quick-pick. Required ones block completion until filled. |
 | Conditional checks get skipped | Counterparty review becomes required when Money movement is **Concern**; Linked account review becomes required when Linked accounts is **Concern**. |
 | Notes and verdict contradict each other | Lifting restrictions with open concerns needs a mitigation rationale; Part ways with no concern is blocked; RFI needs the list of requested docs; open ATO/document concerns on a Lift raise warnings. |
 | Something is mentioned but not followed up | Keyword cross-check: e.g. "new device" written in the Service log while ATO is Clear → warning. |

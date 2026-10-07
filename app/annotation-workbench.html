@@ -163,7 +163,7 @@ pre.note{white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 var(--font-
    CONFIGURATION — a team lead can edit this block only.
    ============================================================ */
 const TARGET_AHT_MIN = 20;          // target handle time in minutes
-const MIN_NOTE_CHARS = 12;          // shortest acceptable note per source
+const MIN_NOTE_CHARS = 3;           // shortest acceptable note per source
 
 // Each review source. `required` lists the case types where it is mandatory.
 // `requiredIf` makes it mandatory when another source is marked Concern.
@@ -253,7 +253,9 @@ function evaluate(){
 
   for (const sec of SECTIONS){
     const st = state.sections[sec.id], req = isRequired(sec), txt = st.text.trim();
-    if (!st.status){
+    // A source counts as covered when it has a result (Clear / Concern / N/A) OR the reviewer
+    // has written their own note. Quick-picks and result buttons are shortcuts, not requirements.
+    if (!st.status && !txt){
       if (req){ add(blockers, sec.id, sec.requiredIf && !sec.required.includes(state.caseType) && !st.force
         ? `${sec.title} is now required because ${titleOf(sec.requiredIf)} is marked Concern.`
         : `${sec.title} not reviewed yet.`); secState[sec.id] = "issue"; }
@@ -261,7 +263,7 @@ function evaluate(){
       continue;
     }
     if (txt.length < MIN_NOTE_CHARS){
-      add(blockers, sec.id, st.status==="na" ? `${sec.title}: give the reason it is not applicable.` : `${sec.title}: write what you saw (a quick-pick is enough).`);
+      add(blockers, sec.id, st.status==="na" ? `${sec.title}: give the reason it is not applicable.` : `${sec.title}: write what you saw (type it or use a quick-pick).`);
       secState[sec.id] = "issue"; continue;
     }
     if (st.status==="na" && req && !sec.requiredIf) add(warnings, sec.id, `${sec.title} is normally mandatory for this case type but marked N/A.`);
@@ -272,11 +274,11 @@ function evaluate(){
   const allText = SECTIONS.map(s=>[s.id, state.sections[s.id].text]).concat([["verdict", state.verdict.rationale]]);
   for (const k of KEYWORDS){
     const target = state.sections[k.sec];
-    if (!(target.status==="clear" || target.status==="na" || target.status==="")) continue;
+    if (target.status==="concern") continue;
     for (const [id, text] of allText){
       if (id === k.sec) continue;
       const hit = k.words.find(w => text.toLowerCase().includes(w));
-      if (hit){ add(warnings, k.sec, `“${hit}” is mentioned in ${titleOf(id)}, but ${titleOf(k.sec)} is ${target.status ? (target.status==="na"?"N/A":"Clear") : "not reviewed"}.`); break; }
+      if (hit){ add(warnings, k.sec, `“${hit}” is mentioned in ${titleOf(id)}, but ${titleOf(k.sec)} is ${target.status ? "marked "+(target.status==="na"?"N/A":"Clear") : target.text.trim() ? "not marked Concern" : "not reviewed"}.`); break; }
     }
   }
 
@@ -388,14 +390,14 @@ function update(){
 
   // checker list
   const ids = SECTIONS.map(s=>s.id).concat("verdict");
-  const counted = ids.filter(id => id==="verdict" || isRequired(SECTIONS.find(s=>s.id===id)) || state.sections[id].status);
+  const counted = ids.filter(id => id==="verdict" || isRequired(SECTIONS.find(s=>s.id===id)) || state.sections[id].status || state.sections[id].text.trim());
   const done = counted.filter(id => ["done","warn"].includes(res.secState[id])).length;
   $("#score").textContent = `${done}/${counted.length}`;
   $("#scoreText").textContent = res.blockers.length ? "sources covered" : "ready to complete";
   $("#srcList").innerHTML = ids.map((id,i) => {
     const s = res.secState[id], sec = SECTIONS.find(x=>x.id===id);
     const label = id==="verdict" ? (DECISIONS[state.caseType].find(d=>d[0]===state.verdict.decision)||[,"—"])[1]
-      : ({clear:"Clear",concern:"Concern",na:"N/A"})[state.sections[id].status] || (s==="skip"?"if needed":"to do");
+      : ({clear:"Clear",concern:"Concern",na:"N/A"})[state.sections[id].status] || (state.sections[id].text.trim() ? "Written" : s==="skip" ? "if needed" : "to do");
     return `<li><button type="button" data-jump="${id}"><span class="dot ${s}"></span><span>${esc(titleOf(id))}</span><small>${label}</small></button></li>`;
   }).join("");
   const items = res.blockers.map(b=>({...b,k:"b",t:"Missing"})).concat(res.warnings.map(w=>({...w,k:"w",t:"Check"})));
@@ -428,8 +430,8 @@ function buildNote(res){
   let n = 1;
   for (const sec of SECTIONS){
     const st = state.sections[sec.id];
-    if (!st.status) continue;
-    lines.push(`${n++}. ${sec.title.toUpperCase()} [${L[st.status]}]: ${st.text.trim()}`);
+    if (!st.status && !st.text.trim()) continue;
+    lines.push(`${n++}. ${sec.title.toUpperCase()}${st.status ? ` [${L[st.status]}]` : ""}: ${st.text.trim()}`);
   }
   lines.push("", `VERDICT: ${d ? d[1].toUpperCase() : "-"}`, `Rationale: ${state.verdict.rationale.trim()}`);
   if (state.verdict.decision==="rfi") lines.push(`Requested from seller: ${state.verdict.rfi.trim()}`);

@@ -125,6 +125,11 @@ With({s: DateDiff(varStart, varNow, TimeUnit.Seconds)},
 
 ## 4. Review sources (left, `galSources`)
 
+A source counts as covered when the reviewer picks a result (Clear / Concern / N/A) **or**
+writes their own note. The result buttons and quick-picks are shortcuts. Picking a result
+is still worth it, because rules such as "Counterparty review is required when Money movement
+is Concern" only react to the Concern mark.
+
 Insert a **Blank flexible height** gallery named `galSources`:
 X `16`, Y `76`, Width `840`, Height `Parent.Height - 92`, TemplatePadding `8`,
 **Items** = `03-galSources.Items.fx`.
@@ -165,7 +170,7 @@ Patch(colReview, LookUp(colReview, Id = ThisItem.Id), {Notes: Self.Text})
 ```
 If(CountRows(Filter(galIssues.AllItems, Sev = "Missing" && Sec = ThisItem.Id)) > 0, clrBad,
    CountRows(Filter(galIssues.AllItems, Sec = ThisItem.Id)) > 0, clrWarn,
-   !IsBlank(ThisItem.Status), clrOk,
+   !IsBlank(ThisItem.Status) || !IsBlank(Trim(ThisItem.Notes)), clrOk,
    clrLine)
 ```
 
@@ -208,8 +213,8 @@ Fill `clrBg`, Color `Black`, BorderColor `clrLine`, RadiusTopLeft/… `15`, Size
 **`lblScore.Text`**:
 
 ```
-With({req: Filter(galSources.AllItems, IsReq || !IsBlank(Status))},
-  CountRows(Filter(req As s, !IsBlank(s.Status) &&
+With({req: Filter(galSources.AllItems, IsReq || !IsBlank(Status) || !IsBlank(Trim(Notes)))},
+  CountRows(Filter(req As s, (!IsBlank(s.Status) || !IsBlank(Trim(s.Notes))) &&
       CountRows(Filter(galIssues.AllItems, Sev = "Missing" && Sec = s.Id)) = 0))
   & " / " & CountRows(req) & " sources covered")
 ```

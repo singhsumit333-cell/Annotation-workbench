@@ -17,19 +17,19 @@ With(
   Sort(
     Ungroup(
       Table(
-        // 1. Required source not reviewed
-        {T: ForAll(Filter(rs, IsReq && IsBlank(Status)) As s,
+        // 1. Required source not reviewed (no result picked AND nothing written)
+        {T: ForAll(Filter(rs, IsReq && IsBlank(Status) && IsBlank(Trim(Notes))) As s,
               {Sev: "Missing", Sec: s.Id,
                Msg: If(!(varCaseType in Split(s.Required, ",")) && !s.Force,
                        s.Title & " is now required because " & LookUp(colSources, Id = s.RequiredIf).Title & " is marked Concern.",
                        s.Title & " not reviewed yet.")})},
 
-        // 2. Status picked but no real note
+        // 2. Result picked but no real note
         {T: ForAll(Filter(rs, !IsBlank(Status) && Len(Trim(Notes)) < varMinNoteChars) As s,
               {Sev: "Missing", Sec: s.Id,
                Msg: If(s.Status = "N/A",
                        s.Title & ": give the reason it is not applicable.",
-                       s.Title & ": write what you saw (a quick-pick is enough).")})},
+                       s.Title & ": write what you saw (type it or use a quick-pick).")})},
 
         // 3. Mandatory source marked N/A
         {T: ForAll(Filter(rs, Status = "N/A" && (varCaseType in Split(Required, ",")) && Len(Trim(Notes)) >= varMinNoteChars) As s,
@@ -39,7 +39,9 @@ With(
         {T: ForAll(Filter(hits As h, !IsBlank(h.Hit) && LookUp(colReview, Id = h.Sec).Status <> "Concern") As h2,
               {Sev: "Check", Sec: h2.Sec,
                Msg: "'" & h2.Hit & "' is mentioned in your notes, but " & LookUp(colSources, Id = h2.Sec).Title & " is " &
-                    If(IsBlank(LookUp(colReview, Id = h2.Sec).Status), "not reviewed", "marked " & LookUp(colReview, Id = h2.Sec).Status) & "."})},
+                    If(!IsBlank(LookUp(colReview, Id = h2.Sec).Status), "marked " & LookUp(colReview, Id = h2.Sec).Status,
+                       !IsBlank(Trim(LookUp(colReview, Id = h2.Sec).Notes)), "not marked Concern",
+                       "not reviewed") & "."})},
 
         // 5. Case and verdict rules
         {T: ShowColumns(Filter(Table(
