@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Annotation Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: case bar on top, numbered review sources on the left, a sticky live checker on the right. */
+:root{
+  --bg:#eef2f3; --surface:#ffffff; --sunk:#f6f8f9; --ink:#16242a; --muted:#56676e; --line:#d6dee1;
+  --accent:#0d6870; --accent-ink:#ffffff; --accent-soft:#dcefef;
+  --ok:#2c7a4b; --ok-soft:#e1f1e7; --warn:#9a5c00; --warn-soft:#fbefd9; --bad:#b0271f; --bad-soft:#f9e1df;
+  --font-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1518; --surface:#162126; --sunk:#111b1f; --ink:#e2eaed; --muted:#92a4ab; --line:#283840;
+  --accent:#4bb0b6; --accent-ink:#06191b; --accent-soft:#163a3d;
+  --ok:#5cc58b; --ok-soft:#173326; --warn:#e6a23e; --warn-soft:#3a2c12; --bad:#f06c62; --bad-soft:#3d1a18; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1518; --surface:#162126; --sunk:#111b1f; --ink:#e2eaed; --muted:#92a4ab; --line:#283840;
+  --accent:#4bb0b6; --accent-ink:#06191b; --accent-soft:#163a3d;
+  --ok:#5cc58b; --ok-soft:#173326; --warn:#e6a23e; --warn-soft:#3a2c12; --bad:#f06c62; --bad-soft:#3d1a18; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--font-ui);padding-inline:16px;padding-block:0 48px}
+h1,h2,h3{margin:0;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto}
+
+/* Case bar */
+.casebar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.casebar .row{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end}
+.brand{display:flex;flex-direction:column;gap:2px;margin-right:auto;min-width:0}
+.brand h1{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.brand span{font-size:12px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.field input,.field select{font:inherit;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;min-width:0}
+.field input{width:150px}
+.mono{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.timer{display:flex;flex-direction:column;gap:3px;min-width:150px}
+.timer .t{font:500 18px/1 var(--font-data);font-variant-numeric:tabular-nums}
+.bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.bar.over i{background:var(--warn)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 12px;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--bad)}
+.example{margin-top:10px;font-size:12.5px;background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:6px 10px}
+
+/* Main grid */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}.checker{position:static!important}}
+.sections{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:120px}
+.sec.flash{box-shadow:0 0 0 2px var(--accent)}
+.sec[data-state="issue"]{border-left:4px solid var(--bad)}
+.sec[data-state="warn"]{border-left:4px solid var(--warn)}
+.sec[data-state="done"]{border-left:4px solid var(--ok)}
+.sec[data-state="skip"]{opacity:.72}
+.sec-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.num{font:500 12px var(--font-data);color:var(--muted);width:22px}
+.sec-head h2{font-size:15px;font-weight:600;margin-right:auto}
+.tag{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:3px;padding:2px 6px;background:var(--sunk);color:var(--muted)}
+.tag.req{background:var(--accent-soft);color:var(--accent)}
+.where{font-size:12.5px;color:var(--muted);margin:-4px 0 0 34px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 10px;font-size:12.5px;font-weight:500;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"][data-v="clear"]{background:var(--ok-soft);color:var(--ok)}
+.seg button[aria-pressed="true"][data-v="concern"]{background:var(--bad-soft);color:var(--bad)}
+.seg button[aria-pressed="true"][data-v="na"]{background:var(--sunk);color:var(--ink)}
+.seg button[aria-pressed="true"].dec{background:var(--accent);color:var(--accent-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px dashed var(--line);background:var(--sunk);border-radius:14px;padding:3px 10px;font-size:12.5px}
+.chip:hover{border-style:solid;border-color:var(--accent);color:var(--accent)}
+textarea{width:100%;min-height:68px;resize:vertical;font:13.5px/1.5 var(--font-ui);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px}
+.sub{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.force{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+
+/* Checker */
+.checker{position:sticky;top:110px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.checker h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.score{display:flex;align-items:baseline;gap:8px}
+.score b{font:600 28px/1 var(--font-data);font-variant-numeric:tabular-nums}
+.score span{color:var(--muted);font-size:12.5px}
+.srcs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.srcs li button{display:grid;grid-template-columns:18px 1fr auto;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:6px 0;font-size:13px}
+.srcs li:last-child button{border-bottom:0}
+.dot{justify-self:start;align-self:start;width:10px;height:10px;border-radius:50%;margin-top:5px;border:2px solid var(--line)}
+.dot.done{background:var(--ok);border-color:var(--ok)}
+.dot.issue{background:var(--bad);border-color:var(--bad)}
+.dot.warn{background:var(--warn);border-color:var(--warn)}
+.dot.skip{border-style:dashed}
+.srcs small{color:var(--muted);font-size:11.5px}
+.issues{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.issue{font-size:12.5px;border-radius:var(--r);padding:6px 8px;line-height:1.4}
+.issue.b{background:var(--bad-soft)} .issue.b b{color:var(--bad)}
+.issue.w{background:var(--warn-soft)} .issue.w b{color:var(--warn)}
+.issue button{background:none;border:0;padding:0;text-align:left;width:100%}
+.kbd{font:11px var(--font-data);color:var(--muted)}
+
+/* Dialog */
+.overlay{position:fixed;inset:0;background:rgba(8,16,19,.55);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:20;overflow:auto}
+.dialog{background:var(--surface);border:1px solid var(--line);border-radius:8px;max-width:720px;width:100%;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.dialog h2{font-size:17px}
+.dialog p{margin:0;color:var(--muted)}
+.ack{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+pre.note{white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 var(--font-data);background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:12px;max-height:52vh;overflow:auto;margin:0}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:var(--r);font-size:13px;z-index:30}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="casebar">
+    <div class="row">
+      <div class="brand"><h1>Annotation Workbench</h1><span>Seller risk review · live completeness checker</span></div>
+      <div class="field"><label for="caseId">Case / account ID</label><input id="caseId" class="mono" placeholder="e.g. 1234-5678"></div>
+      <div class="field"><label for="reviewer">Reviewer</label><input id="reviewer" placeholder="Your name"></div>
+      <div class="field"><label for="caseType">Case type</label>
+        <select id="caseType"><option value="review">Restriction review</option><option value="onboarding">Onboarding</option></select></div>
+      <div class="timer"><label class="sub" for="tbar">Handle time</label><div class="t" id="timer">00:00</div><div class="bar" id="tbar"><i></i></div><span class="kbd" id="target"></span></div>
+      <div class="actions">
+        <button class="btn" id="newCase" type="button">New case</button>
+        <button class="btn primary" id="complete" type="button" title="Ctrl+Enter">Complete annotation</button>
+      </div>
+    </div>
+    <div class="example" id="exampleBanner" hidden>Example case with made-up details, loaded so you can see the checker working. Select <b>New case</b> to start a real one.</div>
+  </header>
+
+  <div class="grid">
+    <main class="sections" id="sections"></main>
+    <aside class="checker" aria-live="polite">
+      <h3>Checker</h3>
+      <div class="score"><b id="score">0/0</b><span id="scoreText">sources covered</span></div>
+      <ul class="srcs" id="srcList"></ul>
+      <h3 id="issueHead">Open items</h3>
+      <ul class="issues" id="issueList"></ul>
+      <span class="kbd">Alt+1…9 jump to a section · Ctrl+Enter complete</span>
+    </aside>
+  </div>
+</div>
+<div id="dlg"></div>
+
+<script>
+/* ============================================================
+   CONFIGURATION — a team lead can edit this block only.
+   ============================================================ */
+const TARGET_AHT_MIN = 20;          // target handle time in minutes
+const MIN_NOTE_CHARS = 12;          // shortest acceptable note per source
+
+// Each review source. `required` lists the case types where it is mandatory.
+// `requiredIf` makes it mandatory when another source is marked Concern.
+const SECTIONS = [
+  { id:"profile", title:"Account profile", where:"Profile page: business type, age of account, ownership, contact & bank details, restriction reason.",
+    required:["review","onboarding"],
+    chips:["Profile details consistent with business type","Account age < 90 days","Recent bank account change","Business category mismatch","Restriction reason: "] },
+  { id:"prior", title:"Previous teammate notes", where:"Case history: earlier annotations, open RFIs, past verdicts and escalations.",
+    required:["review","onboarding"],
+    chips:["No prior reviews","Prior review cleared with no concerns","Pending RFI from previous review","Previously escalated","Prior verdict: "] },
+  { id:"documents", title:"Documents provided", where:"Document store: ID, proof of address, business registration, bank statements, invoices.",
+    required:["review","onboarding"],
+    chips:["All requested documents received and valid","ID verified","Proof of address verified","Document appears altered","Document name mismatch with account","Documents outstanding: "] },
+  { id:"ato", title:"ATO indicators", where:"Login & security history: password/email/phone changes, new devices, IP/geo, 2FA resets.",
+    required:["review"],
+    chips:["No ATO indicators","Password reset followed by bank change","Login from new device/country","Email or phone changed recently","2FA reset"] },
+  { id:"linked", title:"Linked account checks", where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts.",
+    required:["review","onboarding"],
+    chips:["No linked accounts","Linked accounts found, all in good standing","Linked to restricted/closed account","Shared bank account with other seller","Shared device/IP"] },
+  { id:"service", title:"Service log", where:"Contacts: calls, chats, emails with the seller and what they claimed.",
+    required:["review","onboarding"],
+    chips:["No contacts on record","Seller contacted about restriction","Seller explanation consistent with evidence","Seller explanation inconsistent with evidence","Threat of chargeback/legal"] },
+  { id:"money", title:"Money movement & cash advancing", where:"Transactions: inflow vs outflow, rapid withdrawals, round amounts, refunds, cash-advance patterns.",
+    required:["review"],
+    chips:["Money movement in line with business","Rapid in-and-out (pass-through) funds","Round-amount transactions","Possible cash advancing: self-funded card payments","Refunds to different instrument"] },
+  { id:"counterparty", title:"Counterparty review", where:"Buyers/payers: repeat payers, related parties, disputes and chargebacks.",
+    required:[], requiredIf:"money",
+    chips:["Counterparties look genuine","Same payer repeatedly","Counterparty linked to seller","High dispute/chargeback rate"] },
+  { id:"linkedReview", title:"Linked account review", where:"Review each linked account flagged above: status, restriction reasons, verdicts.",
+    required:[], requiredIf:"linked",
+    chips:["Linked account restricted for fraud","Linked account closed by us","Linked account review shows no risk"] },
+];
+
+const DECISIONS = {
+  review:     [["lift","Lift restrictions"],["partways","Part ways"],["rfi","Request additional info"]],
+  onboarding: [["approve","Approve onboarding"],["decline","Decline"],["rfi","Request additional info"]],
+};
+
+// If these words appear anywhere in the notes, the named source should not be Clear / N/A.
+const KEYWORDS = [
+  { sec:"ato", words:["password reset","password change","new device","email change","email changed","phone change","phone changed","2fa","unrecognised login","unrecognized login","takeover","hacked"] },
+  { sec:"money", words:["cash advance","cash advancing","pass-through","round amount","rapid withdrawal","self-funded","structuring"] },
+  { sec:"linked", words:["linked to","shared device","shared bank","same ip","same device","related account"] },
+  { sec:"documents", words:["altered","forged","fake document","edited document","expired id","pending document","outstanding document"] },
+];
+
+/* ============================================================
+   State
+   ============================================================ */
+const STORE_KEY = "annotationWorkbench.draft.v1";
+const blank = () => ({ caseId:"", reviewer:"", caseType:"review", startedAt:Date.now(), example:false,
+  sections:Object.fromEntries(SECTIONS.map(s=>[s.id,{status:"",text:"",force:false}])),
+  verdict:{decision:"",rationale:"",rfi:""} });
+
+const example = () => { const s = blank(); s.example = true; s.caseId = "EX-2048-117"; s.reviewer = "Example";
+  s.startedAt = Date.now() - 9*60*1000;
+  Object.assign(s.sections.profile,{status:"clear",text:"Sole trader, home décor, account opened 14 months ago. Restriction reason: high-risk payment review after spike in volume."});
+  Object.assign(s.sections.prior,{status:"clear",text:"One prior review (Mar) cleared with no concerns."});
+  Object.assign(s.sections.documents,{status:"clear",text:"ID and proof of address verified; bank statement matches account name."});
+  Object.assign(s.sections.service,{status:"concern",text:"Seller called 2 days ago saying a new device was used because their phone was lost; asked for funds to be released urgently."});
+  Object.assign(s.sections.money,{status:"concern",text:"Rapid in-and-out (pass-through) funds: 8 round-amount payments of 500.00 withdrawn within 24h."});
+  s.verdict = {decision:"lift",rationale:"Volume spike explained by seasonal sale.",rfi:""};
+  return s; };
+
+let state;
+try { state = JSON.parse(localStorage.getItem(STORE_KEY)); } catch(e) { state = null; }
+if (!state || !state.sections) state = example();
+for (const s of SECTIONS) state.sections[s.id] ??= {status:"",text:"",force:false};
+
+const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e) {} };
+const $ = (sel, root=document) => root.querySelector(sel);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ============================================================
+   Rules engine — returns blockers (must fix) and warnings (acknowledge)
+   ============================================================ */
+function isRequired(sec){
+  const st = state.sections[sec.id];
+  if (sec.required.includes(state.caseType)) return true;
+  if (st.force) return true;
+  if (sec.requiredIf && state.sections[sec.requiredIf].status === "concern") return true;
+  return false;
+}
+function titleOf(id){ return id==="verdict" ? "Verdict" : SECTIONS.find(s=>s.id===id).title; }
+
+function evaluate(){
+  const blockers = [], warnings = [], secState = {};
+  const add = (list, sec, msg) => list.push({sec, msg});
+
+  for (const sec of SECTIONS){
+    const st = state.sections[sec.id], req = isRequired(sec), txt = st.text.trim();
+    if (!st.status){
+      if (req){ add(blockers, sec.id, sec.requiredIf && !sec.required.includes(state.caseType) && !st.force
+        ? `${sec.title} is now required because ${titleOf(sec.requiredIf)} is marked Concern.`
+        : `${sec.title} not reviewed yet.`); secState[sec.id] = "issue"; }
+      else secState[sec.id] = "skip";
+      continue;
+    }
+    if (txt.length < MIN_NOTE_CHARS){
+      add(blockers, sec.id, st.status==="na" ? `${sec.title}: give the reason it is not applicable.` : `${sec.title}: write what you saw (a quick-pick is enough).`);
+      secState[sec.id] = "issue"; continue;
+    }
+    if (st.status==="na" && req && !sec.requiredIf) add(warnings, sec.id, `${sec.title} is normally mandatory for this case type but marked N/A.`);
+    secState[sec.id] = "done";
+  }
+
+  // Keyword cross-checks: something mentioned elsewhere that contradicts a Clear / N/A source.
+  const allText = SECTIONS.map(s=>[s.id, state.sections[s.id].text]).concat([["verdict", state.verdict.rationale]]);
+  for (const k of KEYWORDS){
+    const target = state.sections[k.sec];
+    if (!(target.status==="clear" || target.status==="na" || target.status==="")) continue;
+    for (const [id, text] of allText){
+      if (id === k.sec) continue;
+      const hit = k.words.find(w => text.toLowerCase().includes(w));
+      if (hit){ add(warnings, k.sec, `“${hit}” is mentioned in ${titleOf(id)}, but ${titleOf(k.sec)} is ${target.status ? (target.status==="na"?"N/A":"Clear") : "not reviewed"}.`); break; }
+    }
+  }
+
+  // Verdict consistency
+  const v = state.verdict, concerns = SECTIONS.filter(s=>state.sections[s.id].status==="concern");
+  if (!v.decision){ add(blockers,"verdict","Choose a verdict."); }
+  else {
+    if (v.rationale.trim().length < 25) add(blockers,"verdict","Explain the verdict in the rationale (why this decision).");
+    if (v.decision==="rfi" && v.rfi.trim().length < 5) add(blockers,"verdict","List the documents / information requested from the seller.");
+    if ((v.decision==="lift"||v.decision==="approve") && concerns.length){
+      const names = concerns.map(c=>c.title).join(", ");
+      if (v.rationale.trim().length < 80) add(blockers,"verdict",`Verdict clears the account but concerns are open (${names}). Say how each one is mitigated.`);
+      else add(warnings,"verdict",`Clearing the account with open concerns: ${names}. Confirm the rationale covers each.`);
+    }
+    if ((v.decision==="lift"||v.decision==="approve") && state.sections.ato.status==="concern")
+      add(warnings,"verdict","ATO concern is open. Lifting may release funds to a fraudster; consider RFI or escalation.");
+    if ((v.decision==="lift"||v.decision==="approve") && state.sections.documents.status==="concern")
+      add(warnings,"verdict","Document concern is open. Consider Request additional info instead.");
+    if ((v.decision==="partways"||v.decision==="decline") && !concerns.length)
+      add(blockers,"verdict","Exiting the account but no source is marked Concern. Record the evidence that supports it.");
+    if (/rfi|pending/i.test(state.sections.prior.text) && v.decision!=="rfi" && state.sections.documents.status!=="clear")
+      add(warnings,"documents","Previous notes mention a pending RFI. Confirm whether those documents arrived.");
+  }
+  const vDone = !blockers.some(b=>b.sec==="verdict");
+  secState.verdict = !v.decision ? "issue" : vDone ? "done" : "issue";
+  for (const w of warnings) if (secState[w.sec]==="done") secState[w.sec] = "warn";
+  return {blockers, warnings, secState};
+}
+
+/* ============================================================
+   Rendering
+   ============================================================ */
+function renderSections(){
+  const host = $("#sections"); host.innerHTML = "";
+  SECTIONS.forEach((sec, i) => {
+    const st = state.sections[sec.id];
+    const el = document.createElement("section");
+    el.className = "sec"; el.id = "sec-"+sec.id;
+    const conditional = !sec.required.length;
+    el.innerHTML = `
+      <div class="sec-head">
+        <span class="num">${String(i+1).padStart(2,"0")}</span>
+        <h2>${esc(sec.title)}</h2>
+        <span class="tag" data-req></span>
+        <div class="seg" role="group" aria-label="${esc(sec.title)} result">
+          <button type="button" data-v="clear">Clear</button>
+          <button type="button" data-v="concern">Concern</button>
+          <button type="button" data-v="na">N/A</button>
+        </div>
+      </div>
+      <p class="where">${esc(sec.where)}</p>
+      <div class="chips">${sec.chips.map(c=>`<button type="button" class="chip">${esc(c)}</button>`).join("")}</div>
+      <textarea id="txt-${sec.id}" aria-label="${esc(sec.title)} notes" placeholder="What did you check and what did you find?">${esc(st.text)}</textarea>
+      ${conditional ? `<label class="force"><input type="checkbox" id="force-${sec.id}" ${st.force?"checked":""}> Required for this case (auto-required when ${esc(titleOf(sec.requiredIf))} is Concern)</label>` : ""}`;
+    el.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+      st.status = st.status === b.dataset.v ? "" : b.dataset.v; update();
+    }));
+    const ta = el.querySelector("textarea");
+    ta.addEventListener("input", () => { st.text = ta.value; update(); });
+    el.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+      insertChip(ta, c.textContent); st.text = ta.value;
+      if (!st.status) st.status = /^no |consistent|in line|genuine|verified|all requested|cleared|no risk/i.test(c.textContent) ? "clear" : "concern";
+      update();
+    }));
+    const f = el.querySelector(`#force-${sec.id}`);
+    if (f) f.addEventListener("change", () => { st.force = f.checked; update(); });
+    host.appendChild(el);
+  });
+
+  // Verdict
+  const v = state.verdict, el = document.createElement("section");
+  el.className = "sec"; el.id = "sec-verdict";
+  el.innerHTML = `
+    <div class="sec-head"><span class="num">${String(SECTIONS.length+1).padStart(2,"0")}</span><h2>Verdict</h2><span class="tag req">Required</span></div>
+    <div class="seg" role="group" aria-label="Verdict">${DECISIONS[state.caseType].map(([k,l])=>`<button type="button" class="dec" data-d="${k}">${l}</button>`).join("")}</div>
+    <span class="sub">Rationale</span>
+    <textarea id="rationale" placeholder="Why this decision? Tie it to the findings above.">${esc(v.rationale)}</textarea>
+    <div id="rfiBox"><span class="sub">Information requested from seller</span>
+    <textarea id="rfi" placeholder="e.g. Bank statement for last 3 months; invoice for order #…">${esc(v.rfi)}</textarea></div>`;
+  el.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => {
+    v.decision = v.decision === b.dataset.d ? "" : b.dataset.d; update();
+  }));
+  $("#rationale", el).addEventListener("input", e => { v.rationale = e.target.value; update(); });
+  $("#rfi", el).addEventListener("input", e => { v.rfi = e.target.value; update(); });
+  host.appendChild(el);
+}
+
+function insertChip(ta, text){
+  const cur = ta.value.trimEnd();
+  ta.value = cur ? cur + (/[.;:]$/.test(cur) ? " " : "; ") + text : text;
+  ta.focus(); ta.selectionStart = ta.selectionEnd = ta.value.length;
+}
+
+function update(){
+  save();
+  const res = evaluate();
+  // section chrome
+  for (const sec of SECTIONS){
+    const el = $("#sec-"+sec.id), st = state.sections[sec.id];
+    el.dataset.state = res.secState[sec.id];
+    el.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(st.status===b.dataset.v)));
+    const tag = $("[data-req]", el), req = isRequired(sec);
+    tag.textContent = req ? "Required" : "If needed"; tag.classList.toggle("req", req);
+  }
+  const vEl = $("#sec-verdict");
+  vEl.dataset.state = res.secState.verdict;
+  vEl.querySelectorAll("[data-d]").forEach(b => b.setAttribute("aria-pressed", String(state.verdict.decision===b.dataset.d)));
+  $("#rfiBox").hidden = state.verdict.decision !== "rfi";
+  $("#exampleBanner").hidden = !state.example;
+
+  // checker list
+  const ids = SECTIONS.map(s=>s.id).concat("verdict");
+  const counted = ids.filter(id => id==="verdict" || isRequired(SECTIONS.find(s=>s.id===id)) || state.sections[id].status);
+  const done = counted.filter(id => ["done","warn"].includes(res.secState[id])).length;
+  $("#score").textContent = `${done}/${counted.length}`;
+  $("#scoreText").textContent = res.blockers.length ? "sources covered" : "ready to complete";
+  $("#srcList").innerHTML = ids.map((id,i) => {
+    const s = res.secState[id], sec = SECTIONS.find(x=>x.id===id);
+    const label = id==="verdict" ? (DECISIONS[state.caseType].find(d=>d[0]===state.verdict.decision)||[,"—"])[1]
+      : ({clear:"Clear",concern:"Concern",na:"N/A"})[state.sections[id].status] || (s==="skip"?"if needed":"to do");
+    return `<li><button type="button" data-jump="${id}"><span class="dot ${s}"></span><span>${esc(titleOf(id))}</span><small>${label}</small></button></li>`;
+  }).join("");
+  const items = res.blockers.map(b=>({...b,k:"b",t:"Missing"})).concat(res.warnings.map(w=>({...w,k:"w",t:"Check"})));
+  $("#issueHead").textContent = items.length ? `Open items (${items.length})` : "Open items";
+  $("#issueList").innerHTML = items.length ? items.map(x=>`<li class="issue ${x.k}"><button type="button" data-jump="${x.sec}"><b>${x.t}:</b> ${esc(x.msg)}</button></li>`).join("")
+    : `<li class="issue w" style="background:var(--ok-soft)"><b style="color:var(--ok)">All clear.</b> Every required source is covered.</li>`;
+  return res;
+}
+
+function jump(id){
+  const el = $("#sec-"+id); if (!el) return;
+  el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"});
+  el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"), 1200);
+  const ta = el.querySelector("textarea"); if (ta) ta.focus({preventScroll:true});
+}
+document.addEventListener("click", e => { const j = e.target.closest("[data-jump]"); if (j){ closeDlg(); jump(j.dataset.jump); } });
+
+/* ============================================================
+   Completion flow + note generation
+   ============================================================ */
+function fmtTime(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; }
+
+function buildNote(res){
+  const L = { clear:"CLEAR", concern:"CONCERN", na:"N/A" };
+  const d = DECISIONS[state.caseType].find(x=>x[0]===state.verdict.decision);
+  const lines = [
+    `CASE ${state.caseId || "(no ID)"} | ${state.caseType==="review"?"Restriction review":"Onboarding"} | ${state.reviewer || "(reviewer)"} | ${new Date().toLocaleString()}`,
+    "",
+  ];
+  let n = 1;
+  for (const sec of SECTIONS){
+    const st = state.sections[sec.id];
+    if (!st.status) continue;
+    lines.push(`${n++}. ${sec.title.toUpperCase()} [${L[st.status]}]: ${st.text.trim()}`);
+  }
+  lines.push("", `VERDICT: ${d ? d[1].toUpperCase() : "-"}`, `Rationale: ${state.verdict.rationale.trim()}`);
+  if (state.verdict.decision==="rfi") lines.push(`Requested from seller: ${state.verdict.rfi.trim()}`);
+  if (res.warnings.length) lines.push("", `Checker warnings acknowledged (${res.warnings.length}):`, ...res.warnings.map(w=>`- ${w.msg}`));
+  return lines.join("\n");
+}
+
+function closeDlg(){ $("#dlg").innerHTML = ""; }
+function complete(){
+  const res = update();
+  if (res.blockers.length){
+    $("#dlg").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+      <h2 id="dlgT">You missed ${res.blockers.length} item${res.blockers.length>1?"s":""}</h2>
+      <p>Fix these before the note can be generated. Select one to jump to it.</p>
+      <ul class="issues">${res.blockers.map(b=>`<li class="issue b"><button type="button" data-jump="${b.sec}"><b>${esc(titleOf(b.sec))}:</b> ${esc(b.msg)}</button></li>`).join("")}</ul>
+      ${res.warnings.length ? `<p>Also ${res.warnings.length} warning${res.warnings.length>1?"s":""} to look at afterwards.</p>`:""}
+      <div class="actions"><button class="btn primary" type="button" data-jump="${res.blockers[0].sec}">Go to first item</button><button class="btn" type="button" id="dlgClose">Close</button></div>
+    </div></div>`;
+  } else if (res.warnings.length){
+    $("#dlg").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+      <h2 id="dlgT">Double-check ${res.warnings.length} thing${res.warnings.length>1?"s":""}</h2>
+      <p>Nothing is missing, but these look inconsistent. Acknowledge each one or go back and fix it.</p>
+      ${res.warnings.map((w,i)=>`<label class="ack issue w"><input type="checkbox" class="ackbox" id="ack${i}"> <span><b>${esc(titleOf(w.sec))}:</b> ${esc(w.msg)}</span></label>`).join("")}
+      <div class="actions"><button class="btn primary" type="button" id="ackGo" disabled>Acknowledge &amp; generate note</button><button class="btn" type="button" id="dlgClose">Back to case</button></div>
+    </div></div>`;
+    const boxes = [...document.querySelectorAll(".ackbox")], go = $("#ackGo");
+    boxes.forEach(b => b.addEventListener("change", () => go.disabled = !boxes.every(x=>x.checked)));
+    go.addEventListener("click", () => showNote(res));
+  } else showNote(res);
+  const c = $("#dlgClose"); if (c) c.addEventListener("click", closeDlg);
+}
+
+function showNote(res){
+  const note = buildNote(res), aht = fmtTime(Date.now() - state.startedAt);
+  $("#dlg").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+    <h2 id="dlgT">Annotation ready</h2>
+    <p>Handle time <span class="mono">${aht}</span>. Copy it into the case tool.</p>
+    <pre class="note" id="noteText" tabindex="0">${esc(note)}</pre>
+    <div class="actions"><button class="btn primary" type="button" id="copy">Copy note</button><button class="btn" type="button" id="dlgClose">Back to case</button></div>
+  </div></div>`;
+  $("#dlgClose").addEventListener("click", closeDlg);
+  $("#copy").addEventListener("click", () => {
+    const fallback = () => {
+      const r = document.createRange(); r.selectNodeContents($("#noteText"));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast("Text selected, press Ctrl+C");
+    };
+    if (!navigator.clipboard) return fallback();
+    navigator.clipboard.writeText(note).then(() => toast("Note copied")).catch(fallback);
+  });
+}
+
+function toast(msg){ const t = document.createElement("div"); t.className="toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 1800); }
+
+/* ============================================================
+   Case bar, timer, shortcuts
+   ============================================================ */
+function bindCaseBar(){
+  for (const k of ["caseId","reviewer","caseType"]){
+    const el = $("#"+k); el.value = state[k];
+    el.addEventListener(k==="caseType"?"change":"input", () => {
+      state[k] = el.value;
+      if (k==="caseType"){ state.verdict.decision=""; renderSections(); }
+      update();
+    });
+  }
+}
+let armed = null;
+$("#newCase").addEventListener("click", e => {
+  const b = e.currentTarget;
+  if (!armed){ b.textContent = "Click again to clear"; b.classList.add("danger");
+    armed = setTimeout(()=>{ armed=null; b.textContent="New case"; b.classList.remove("danger"); }, 2500); return; }
+  clearTimeout(armed); armed = null; b.textContent = "New case"; b.classList.remove("danger");
+  const reviewer = state.example ? "" : state.reviewer, type = state.caseType;
+  state = blank(); state.reviewer = reviewer; state.caseType = type;
+  bindCaseBar(); renderSections(); update(); $("#caseId").focus(); toast("New case started");
+});
+$("#complete").addEventListener("click", complete);
+$("#target").textContent = `target ${TARGET_AHT_MIN}:00`;
+setInterval(() => {
+  const ms = Date.now() - state.startedAt, pct = ms / (TARGET_AHT_MIN*60000);
+  $("#timer").textContent = fmtTime(ms);
+  $("#tbar i").style.width = Math.min(100, pct*100) + "%";
+  $("#tbar").classList.toggle("over", pct > 1);
+}, 1000);
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==="Enter"){ e.preventDefault(); complete(); }
+  if (e.key==="Escape") closeDlg();
+  if (e.altKey && /^[1-9]$/.test(e.key)){ e.preventDefault(); const ids = SECTIONS.map(s=>s.id).concat("verdict"); const id = ids[+e.key-1]; if (id) jump(id); }
+  if (e.altKey && e.key==="0"){ e.preventDefault(); jump("verdict"); }
+});
+
+bindCaseBar(); renderSections(); update();
+</script>
+</body>
+</html>
