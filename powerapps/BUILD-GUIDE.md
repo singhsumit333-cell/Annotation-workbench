@@ -67,12 +67,12 @@ writes to them.
 | Reviewer, CaseType, Decision, MissedAtFirstCheck | Single line of text |
 | ProfileStatus, PriorNotesStatus, DocumentsStatus, ATOStatus, LinkedChecksStatus, ServiceLogStatus, MoneyMovementStatus, CounterpartyStatus, LinkedReviewStatus | Single line of text |
 | ProfileNotes, PriorNotesNotes, DocumentsNotes, ATONotes, LinkedChecksNotes, ServiceLogNotes, MoneyMovementNotes, CounterpartyNotes, LinkedReviewNotes | Multiple lines of text (plain) |
-| Rationale, RFIRequested, WarningsAcknowledged, FinalNote | Multiple lines of text (plain) |
+| Rationale, VerdictDetail, WarningsAcknowledged, FinalNote | Multiple lines of text (plain) |
 | HandleTimeMin | Number (1 decimal) |
 | CompletedOn | Date and time |
 
 Give reviewers **Contribute** permission on the list. In `"metrics"` mode the Notes, Rationale,
-RFIRequested and FinalNote columns stay empty. You can delete them, but then also delete
+VerdictDetail and FinalNote columns stay empty. You can delete them, but then also delete
 those lines from `07-btnSubmit.OnSelect.fx`.
 
 ## 2. Create the app
@@ -95,7 +95,7 @@ Use **classic** controls (Insert → Classic) so the property names below match.
 | `lblAppTitle` | Label | Text `"Annotation Workbench"`, FontWeight Bold, Size 16 |
 | `txtCaseId` | Text input | Default `varCaseId` · OnChange `Set(varCaseId, Self.Text)` · HintText `"Case / account ID"` |
 | `txtReviewer` | Text input | Default `varReviewer` · OnChange `Set(varReviewer, Self.Text)` |
-| `ddCaseType` | Drop down | Items `["Restriction review", "Onboarding"]` · Default `If(varCaseType = "onboarding", "Onboarding", "Restriction review")` · OnChange `Set(varCaseType, If(Self.Selected.Value = "Onboarding", "onboarding", "review")); Set(varDecision, "")` |
+| `ddCaseType` | Drop down | Items `["Restriction review", "Onboarding"]` · Default `If(varCaseType = "onboarding", "Onboarding", "Restriction review")` · OnChange `Set(varCaseType, If(Self.Selected.Value = "Onboarding", "onboarding", "review"))` |
 | `tmrAHT` | Timer | Duration `1000` · Repeat `true` · AutoStart `true` · Visible `false` · OnTimerEnd `Set(varNow, Now())` |
 | `lblTimer` | Label | Text: see below · Color `If(DateDiff(varStart, varNow, TimeUnit.Minutes) >= varTargetAHTMin, clrWarn, clrAccent)` · Font size 18 |
 | `lblPrivacy` | Label | Under the title. Text: see below · Size 9 · Color `clrOk` · Fill `clrOkSoft` |
@@ -201,10 +201,11 @@ Fill `clrBg`, Color `Black`, BorderColor `clrLine`, RadiusTopLeft/… `15`, Size
 | Control | Type | Key properties |
 |---|---|---|
 | `lblVerdictHead` | Label | Text `"Verdict"`, FontWeight Semibold |
-| `galDecisions` | Blank **horizontal** gallery | Height `44`, TemplateSize `155`, Items `Filter(colDecisions, CaseType = varCaseType)` |
+| `galDecisions` | Blank **vertical** gallery | WrapCount `3`, TemplateSize `40`, Height `84`, Items `Sort(colDecisions, Order)` |
 | ↳ `btnDecision` | Button (inside) | Text `ThisItem.Label` · OnSelect `Set(varDecision, If(varDecision = ThisItem.Key, "", ThisItem.Key))` · Fill `If(varDecision = ThisItem.Key, clrAccent, White)` · Color `If(varDecision = ThisItem.Key, White, clrAccent)` · Size 10 |
 | `txtRationale` | Text input | Mode Multiline, Height `90`, Default `varRationale`, OnChange `Set(varRationale, Self.Text)`, HintText `"Why this decision? Tie it to the findings."`, BorderColor `If(varJump = "verdict", clrAccent, clrLine)` |
-| `txtRFI` | Text input | Mode Multiline, Height `60`, Visible `varDecision = "rfi"`, Default `varRFI`, OnChange `Set(varRFI, Self.Text)`, HintText `"Documents / information requested from the seller"` |
+| `lblDetail` | Label | Visible `!IsBlank(LookUp(colDecisions, Key = varDecision).Detail)`, Text `LookUp(colDecisions, Key = varDecision).Detail`, Size 9, Color `clrMuted` |
+| `txtDetail` | Text input | Mode Multiline, Height `60`, Visible `lblDetail.Visible`, Default `varDetail`, OnChange `Set(varDetail, Self.Text)`, HintText `LookUp(colDecisions, Key = varDecision).Hint` |
 | `lblScore` | Label | Text: see below, FontWeight Semibold |
 | `galIssues` | Blank vertical gallery | Items = `04-galIssues.Items.fx`, TemplateSize `58`, Height to the bottom of the screen · OnSelect: see below |
 | ↳ `lblIssue` | Label (inside) | Width `Parent.TemplateWidth`, Height `52`, Text `If(ThisItem.Sev = "Missing", "Missing: ", "Check: ") & ThisItem.Msg`, Fill `If(ThisItem.Sev = "Missing", clrBadSoft, clrWarnSoft)`, Size 10, VerticalAlign Top, PaddingLeft 8 |
@@ -281,16 +282,17 @@ Switch(varPopup,
 
 ## 7. Test, publish, share
 
-Test these five cases in preview (F5):
+Test these cases in preview (F5):
 
 1. **Empty case → Complete.** Expect a list of every required source plus *Choose a verdict*.
 2. **Money movement = Concern.** Counterparty review switches to REQUIRED.
 3. **Write "new device" in Service log with ATO = Clear.** Expect an amber *'new device' is mentioned…* item.
-4. **Lift restrictions with any Concern and a short rationale.** Expect a red item asking for mitigation.
-5. **Fill everything correctly → Complete → Copy note → Save & start next case.** The note is on the clipboard and the screen resets. In `"metrics"` mode a new row appears in RiskAnnotations with statuses and handle time, but no case ID or notes.
-6. **Type something, then click New case.** Expect *Clear this case?*. **Keep case** leaves it as it was.
-7. **Show example → Save & start next case.** Expect *Example case: nothing was saved.* and no new row.
-8. **Type something, then close the browser tab** (published app in a browser). Expect a leave-page warning.
+4. **Lift limitation with any Concern and a short rationale.** Expect a red item asking for mitigation.
+5. **Pick Raised URP ticket.** A *URP ticket number and reason* box appears and stays red until it is filled. The note ends with that line.
+6. **Fill everything correctly → Complete → Copy note → Save & start next case.** The note is on the clipboard and the screen resets. In `"metrics"` mode a new row appears in RiskAnnotations with statuses and handle time, but no case ID or notes.
+7. **Type something, then click New case.** Expect *Clear this case?*. **Keep case** leaves it as it was.
+8. **Show example → Save & start next case.** Expect *Example case: nothing was saved.* and no new row.
+9. **Type something, then close the browser tab** (published app in a browser). Expect a leave-page warning.
 
 Then **File → Save → Publish** and **Share** the app with the team. Reviewers also need
 Contribute permission on the list.
@@ -298,14 +300,15 @@ Contribute permission on the list.
 ## 8. Changing rules and sources (team lead)
 
 - **What is saved:** change `varSaveMode` in **App → OnStart** (see **Privacy and saving**).
-- **Sources, quick-pick phrases, verdict options, keywords, target handle time:** edit the
+- **Verdict options:** edit `colDecisions` in **App → OnStart**. Give a verdict a `Detail` label to make an extra box appear (and be required) when it is picked.
+- **Sources, quick-pick phrases, keywords, target handle time:** edit the
   CONFIGURATION block in **App → OnStart**, then save and publish. No other change is needed,
   unless you add a new source. For a new source, also add its two columns to the list
   and two lines to `btnSubmit.OnSelect`.
 - **A new SOP rule:** add one row to the *Case and verdict rules* table in `galIssues.Items`:
   `{Sev: "Missing" or "Check", Sec: "<source id or verdict>", Msg: "<what to tell the reviewer>", Show: <condition>}`.
-  For example, require a counterparty review on every Part ways:
-  `{Sev: "Missing", Sec: "counterparty", Msg: "Part ways needs a counterparty review.", Show: varDecision = "partways" && IsBlank(LookUp(colReview, Id = "counterparty").Status)}`
+  For example, require a counterparty review on every Deny limitation:
+  `{Sev: "Missing", Sec: "counterparty", Msg: "Deny limitation needs a counterparty review.", Show: varDecision = "deny" && IsBlank(LookUp(colReview, Id = "counterparty").Status)}`
 
 ## 9. Reporting ideas
 

@@ -23,7 +23,7 @@ if (-not (Get-PnPList -Identity $ListName -ErrorAction SilentlyContinue)) {
 Set-PnPField -List $ListName -Identity "Title" -Values @{ Title = "Case ID" } | Out-Null
 
 $text = @("Reviewer","CaseType","Decision","MissedAtFirstCheck")
-$note = @("Rationale","RFIRequested","WarningsAcknowledged","FinalNote")
+$note = @("Rationale","VerdictDetail","WarningsAcknowledged","FinalNote")
 $sources = @("Profile","PriorNotes","Documents","ATO","LinkedChecks","ServiceLog","MoneyMovement","Counterparty","LinkedReview")
 foreach ($s in $sources) { $text += "${s}Status"; $note += "${s}Notes" }
 

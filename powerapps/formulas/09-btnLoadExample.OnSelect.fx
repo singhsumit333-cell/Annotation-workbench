@@ -7,8 +7,8 @@ Patch(colReview, LookUp(colReview, Id = "documents"), {Status: "Clear",   Notes:
 Patch(colReview, LookUp(colReview, Id = "service"),   {Status: "Concern", Notes: "Seller called 2 days ago saying a new device was used because their phone was lost; asked for funds to be released urgently."});
 Patch(colReview, LookUp(colReview, Id = "money"),     {Status: "Concern", Notes: "Rapid in-and-out (pass-through) funds: 8 round-amount payments of 500.00 withdrawn within 24h."});
 Set(varCaseType, "review"); Set(varCaseId, "EX-2048-117");
-Set(varDecision, "lift"); Set(varRationale, "Volume spike explained by seasonal sale."); Set(varRFI, "");
+Set(varDecision, "lift"); Set(varRationale, "Volume spike explained by seasonal sale."); Set(varDetail, "");
 Set(varPopup, ""); Set(varJump, ""); Set(varChecked, false); Set(varFirstMissed, "");
 Set(varStart, DateAdd(Now(), -9, TimeUnit.Minutes)); Set(varNow, Now());
 Set(varExample, true); Set(varCopied, false);
-Reset(txtCaseId); Reset(txtRationale); Reset(txtRFI); Reset(ddCaseType); Reset(chkAck)
+Reset(txtCaseId); Reset(txtRationale); Reset(txtDetail); Reset(ddCaseType); Reset(chkAck)

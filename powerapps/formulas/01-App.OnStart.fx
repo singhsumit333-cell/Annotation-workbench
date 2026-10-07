@@ -60,14 +60,17 @@ ClearCollect(colSources,
    Chips:"Linked account review shows no risk|!Linked account restricted for fraud|!Linked account closed by us"}
 );
 
-// Verdict options per case type. Clears = releases/approves the account, Exits = ends the relationship.
+// Final verdict options (same for both case types).
+//   Clears : releases the account -> open concerns need a mitigation in the rationale
+//   Keeps  : keeps the limitation -> warns if no source is marked Concern
+//   Detail : extra field that must be filled when this verdict is picked ("" = none); Hint = its example text
 ClearCollect(colDecisions,
-  {CaseType:"review",     Key:"lift",     Label:"Lift restrictions",       Clears:true,  Exits:false},
-  {CaseType:"review",     Key:"partways", Label:"Part ways",               Clears:false, Exits:true},
-  {CaseType:"review",     Key:"rfi",      Label:"Request additional info", Clears:false, Exits:false},
-  {CaseType:"onboarding", Key:"approve",  Label:"Approve onboarding",      Clears:true,  Exits:false},
-  {CaseType:"onboarding", Key:"decline",  Label:"Decline",                 Clears:false, Exits:true},
-  {CaseType:"onboarding", Key:"rfi",      Label:"Request additional info", Clears:false, Exits:false}
+  {Order:1, Key:"lift",     Label:"Lift limitation",                Clears:true,  Keeps:false, Detail:"",                                     Hint:""},
+  {Order:2, Key:"deny",     Label:"Deny limitation",                Clears:false, Keeps:true,  Detail:"",                                     Hint:""},
+  {Order:3, Key:"rfi",      Label:"Request additional information", Clears:false, Keeps:false, Detail:"Information requested from seller",    Hint:"e.g. Bank statement for last 3 months; invoice for order #..."},
+  {Order:4, Key:"internal", Label:"Waiting for internal review",    Clears:false, Keeps:false, Detail:"What is pending, and with which team", Hint:"e.g. Pending linked-account review by the investigations team"},
+  {Order:5, Key:"pcl",      Label:"Sent PCL",                       Clears:false, Keeps:false, Detail:"PCL details",                          Hint:"e.g. PCL reference, date sent, reason"},
+  {Order:6, Key:"urp",      Label:"Raised URP ticket",              Clears:false, Keeps:false, Detail:"URP ticket number and reason",         Hint:"e.g. URP-123456, reason for raising"}
 );
 
 // If any of these words appear in OTHER sections' notes (or the rationale),
@@ -93,6 +96,6 @@ Set(clrBad,     RGBA(176,39,31,1));   Set(clrBadSoft,  RGBA(249,225,223,1));
 Set(varReviewer, User().FullName);
 Set(varCaseType, "review");
 ClearCollect(colReview, AddColumns(colSources, Status, "", Notes, "", Force, false));
-Set(varCaseId, ""); Set(varDecision, ""); Set(varRationale, ""); Set(varRFI, "");
+Set(varCaseId, ""); Set(varDecision, ""); Set(varRationale, ""); Set(varDetail, "");
 Set(varPopup, ""); Set(varJump, ""); Set(varChecked, false); Set(varFirstMissed, "");
 Set(varStart, Now()); Set(varNow, Now()); Set(varExample, false); Set(varCopied, false);

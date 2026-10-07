@@ -9,9 +9,10 @@ Concat(
   Char(10)
 ) &
 Char(10) & Char(10) &
-"VERDICT: " & Upper(LookUp(colDecisions, CaseType = varCaseType && Key = varDecision).Label) & Char(10) &
+"VERDICT: " & Upper(LookUp(colDecisions, Key = varDecision).Label) & Char(10) &
 "Rationale: " & Trim(varRationale) &
-If(varDecision = "rfi", Char(10) & "Requested from seller: " & Trim(varRFI), "") &
+If(!IsBlank(LookUp(colDecisions, Key = varDecision).Detail),
+   Char(10) & LookUp(colDecisions, Key = varDecision).Detail & ": " & Trim(varDetail), "") &
 If(CountRows(Filter(galIssues.AllItems, Sev = "Check")) > 0,
    Char(10) & Char(10) & "Checker warnings acknowledged (" & CountRows(Filter(galIssues.AllItems, Sev = "Check")) & "):" & Char(10) &
    Concat(Filter(galIssues.AllItems, Sev = "Check"), "- " & Msg, Char(10)),

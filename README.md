@@ -24,10 +24,10 @@ Your company's data policy still decides which tools customer data may be entere
 |---|---|
 | Reviewer forgets a source (service log, linked accounts, ATO…) | Every source is a section. It counts as covered when the reviewer writes their own note **or** picks Clear / Concern / N/A or a quick-pick. Required ones block completion until filled. |
 | Conditional checks get skipped | Counterparty review becomes required when Money movement is **Concern**; Linked account review becomes required when Linked accounts is **Concern**. |
-| Notes and verdict contradict each other | Lifting restrictions with open concerns needs a mitigation rationale; Part ways with no concern is blocked; RFI needs the list of requested docs; open ATO/document concerns on a Lift raise warnings. |
+| Notes and verdict contradict each other | Lift limitation with open concerns needs a mitigation rationale; Deny limitation with no concern raises a warning; Request additional information, Waiting for internal review, Sent PCL and Raised URP ticket each require their detail (requested info, pending team, PCL details, URP ticket number); open ATO/document concerns on a Lift raise warnings. |
 | Something is mentioned but not followed up | Keyword cross-check: e.g. "new device" written in the Service log while ATO is Clear → warning. |
 | Slow, inconsistent writing (AHT) | Quick-pick phrases per section, handle-time timer against a target, `Alt+1…9` / `Alt+0` jumps, `Ctrl+Enter` to complete, and a standard formatted note generated for copy-paste into the case tool. |
-| Onboarding vs restriction reviews | Case-type switch changes required sources and verdict options (Approve / Decline / RFI). |
+| Onboarding vs restriction reviews | Case-type switch changes which sources are required. Verdict options are the same for both: Lift limitation, Deny limitation, Request additional information, Waiting for internal review, Sent PCL, Raised URP ticket. |
 
 Blockers (red) must be fixed. Warnings (amber) must each be acknowledged, and the
 acknowledgements are written into the final note, which helps QA see the reviewer
@@ -39,7 +39,7 @@ Everything team-specific lives in the **CONFIGURATION** block at the top of the
 `<script>` in `app/annotation-workbench.html`:
 
 - `SECTIONS` – sources, where-to-look hints, quick-pick phrases, which case types require them, `requiredIf` conditions.
-- `DECISIONS` – verdict options per case type.
+- `VERDICTS` – final verdict options, and which ones need an extra detail box.
 - `KEYWORDS` – words that should force a second look at a source.
 - `TARGET_AHT_MIN`, `MIN_NOTE_CHARS`.
 

@@ -4,6 +4,6 @@
   !IsBlank(Trim(varCaseId)) ||
   !IsBlank(varDecision) ||
   !IsBlank(Trim(varRationale)) ||
-  !IsBlank(Trim(varRFI)) ||
+  !IsBlank(Trim(varDetail)) ||
   CountRows(Filter(colReview, !IsBlank(Status) || !IsBlank(Trim(Notes)))) > 0
 )

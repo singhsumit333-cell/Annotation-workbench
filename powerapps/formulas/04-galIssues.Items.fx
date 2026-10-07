@@ -8,7 +8,7 @@ With(
           Force ||
           (!IsBlank(RequiredIf) && LookUp(colReview As r, r.Id = RequiredIf).Status = "Concern")),
     concerns: Filter(colReview, Status = "Concern"),
-    dec: LookUp(colDecisions, CaseType = varCaseType && Key = varDecision),
+    dec: LookUp(colDecisions, Key = varDecision),
     hits: ForAll(colKeywords As k,
             {Sec: k.Sec,
              Hit: First(Filter(Split(k.Words, "|") As w,
@@ -51,8 +51,8 @@ With(
                Show: IsBlank(varDecision)},
               {Sev: "Missing", Sec: "verdict", Msg: "Explain the verdict in the rationale (why this decision).",
                Show: !IsBlank(varDecision) && Len(Trim(varRationale)) < 25},
-              {Sev: "Missing", Sec: "verdict", Msg: "List the documents / information requested from the seller.",
-               Show: varDecision = "rfi" && Len(Trim(varRFI)) < 5},
+              {Sev: "Missing", Sec: "verdict", Msg: dec.Label & ": fill in '" & dec.Detail & "'.",
+               Show: !IsBlank(dec.Detail) && Len(Trim(varDetail)) < 3},
               {Sev: "Missing", Sec: "verdict",
                Msg: "Verdict clears the account but concerns are open (" & Concat(concerns, Title, ", ") & "). Say how each one is mitigated.",
                Show: dec.Clears && CountRows(concerns) > 0 && Len(Trim(varRationale)) < 80},
@@ -61,10 +61,10 @@ With(
                Show: dec.Clears && CountRows(concerns) > 0 && Len(Trim(varRationale)) >= 80},
               {Sev: "Check", Sec: "verdict", Msg: "ATO concern is open. Lifting may release funds to a fraudster; consider RFI or escalation.",
                Show: dec.Clears && LookUp(colReview, Id = "ato").Status = "Concern"},
-              {Sev: "Check", Sec: "verdict", Msg: "Document concern is open. Consider Request additional info instead.",
+              {Sev: "Check", Sec: "verdict", Msg: "Document concern is open. Consider Request additional information instead.",
                Show: dec.Clears && LookUp(colReview, Id = "documents").Status = "Concern"},
-              {Sev: "Missing", Sec: "verdict", Msg: "Exiting the account but no source is marked Concern. Record the evidence that supports it.",
-               Show: dec.Exits && CountRows(concerns) = 0},
+              {Sev: "Check", Sec: "verdict", Msg: "Deny limitation, but no source is marked Concern. Make sure the notes show the evidence for it.",
+               Show: dec.Keeps && CountRows(concerns) = 0},
               {Sev: "Check", Sec: "documents", Msg: "Previous notes mention a pending RFI. Confirm whether those documents arrived.",
                Show: !IsBlank(varDecision) && varDecision <> "rfi" && LookUp(colReview, Id = "documents").Status <> "Clear" &&
                      ("rfi" in LookUp(colReview, Id = "prior").Notes || "pending" in LookUp(colReview, Id = "prior").Notes)}
