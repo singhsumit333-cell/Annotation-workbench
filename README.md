@@ -4,8 +4,19 @@ A notepad for seller-account risk reviews with a built-in checker. Reviewers wri
 their annotation source by source; the checker keeps watching and, when they press
 **Complete annotation**, tells them what they missed before a note can be produced.
 
-Open `app/annotation-workbench.html` in any browser (Edge/Chrome). No install,
-no server, nothing leaves the machine: drafts are kept in the browser's local storage.
+Open `app/annotation-workbench.html` in any browser (Edge/Chrome). No install and no server.
+
+## Privacy: fully offline
+
+- **No network.** A Content-Security-Policy in the page tells the browser to block every
+  request (fonts, images, uploads, API calls). The page uses fonts already installed on the computer.
+- **Nothing saved.** The case lives only in the open tab's memory. Nothing is written to
+  disk, browser storage or cookies. Closing or refreshing the tab erases it, and the browser
+  warns you first if a case is in progress.
+- **Clearing.** *Clear & start next case* (after copying the note) and *New case* wipe the page.
+- Use the file from your own laptop for real cases, not a hosted copy of the page.
+
+Your company's data policy still decides which tools customer data may be entered into.
 
 ## What it does
 

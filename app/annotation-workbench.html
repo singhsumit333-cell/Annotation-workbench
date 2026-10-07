@@ -4,16 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Annotation Workbench</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<!-- Offline lock: the browser refuses every network request from this page (no fonts, images, uploads or API calls). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; media-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
 <style>
 /* Layout: case bar on top, numbered review sources on the left, a sticky live checker on the right. */
 :root{
   --bg:#eef2f3; --surface:#ffffff; --sunk:#f6f8f9; --ink:#16242a; --muted:#56676e; --line:#d6dee1;
   --accent:#0d6870; --accent-ink:#ffffff; --accent-soft:#dcefef;
   --ok:#2c7a4b; --ok-soft:#e1f1e7; --warn:#9a5c00; --warn-soft:#fbefd9; --bad:#b0271f; --bad-soft:#f9e1df;
-  --font-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --font-data:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --font-ui:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-data:"Cascadia Mono",Consolas,ui-monospace,Menlo,monospace;
   --r:6px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -55,6 +56,8 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-vis
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.danger{color:var(--bad)}
+.offline{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ok);background:var(--ok-soft);border-radius:3px;padding:2px 8px;width:max-content;max-width:100%}
+.offline::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
 .example{margin-top:10px;font-size:12.5px;background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:6px 10px}
 
 /* Main grid */
@@ -125,18 +128,20 @@ pre.note{white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 var(--font-
 <div class="wrap">
   <header class="casebar">
     <div class="row">
-      <div class="brand"><h1>Annotation Workbench</h1><span>Seller risk review · live completeness checker</span></div>
+      <div class="brand"><h1>Annotation Workbench</h1><span>Seller risk review · live completeness checker</span>
+        <span class="offline" title="This page cannot make network requests and does not store anything on disk. Closing the tab erases the case.">Offline · nothing leaves this computer · nothing is saved</span></div>
       <div class="field"><label for="caseId">Case / account ID</label><input id="caseId" class="mono" placeholder="e.g. 1234-5678"></div>
       <div class="field"><label for="reviewer">Reviewer</label><input id="reviewer" placeholder="Your name"></div>
       <div class="field"><label for="caseType">Case type</label>
         <select id="caseType"><option value="review">Restriction review</option><option value="onboarding">Onboarding</option></select></div>
       <div class="timer"><label class="sub" for="tbar">Handle time</label><div class="t" id="timer">00:00</div><div class="bar" id="tbar"><i></i></div><span class="kbd" id="target"></span></div>
       <div class="actions">
+        <button class="btn" id="showExample" type="button">Show example</button>
         <button class="btn" id="newCase" type="button">New case</button>
         <button class="btn primary" id="complete" type="button" title="Ctrl+Enter">Complete annotation</button>
       </div>
     </div>
-    <div class="example" id="exampleBanner" hidden>Example case with made-up details, loaded so you can see the checker working. Select <b>New case</b> to start a real one.</div>
+    <div class="example" id="exampleBanner" hidden>Example case with made-up details, so you can see the checker working. Select <b>New case</b> to clear it and start a real one.</div>
   </header>
 
   <div class="grid">
@@ -208,7 +213,6 @@ const KEYWORDS = [
 /* ============================================================
    State
    ============================================================ */
-const STORE_KEY = "annotationWorkbench.draft.v1";
 const blank = () => ({ caseId:"", reviewer:"", caseType:"review", startedAt:Date.now(), example:false,
   sections:Object.fromEntries(SECTIONS.map(s=>[s.id,{status:"",text:"",force:false}])),
   verdict:{decision:"",rationale:"",rfi:""} });
@@ -223,12 +227,11 @@ const example = () => { const s = blank(); s.example = true; s.caseId = "EX-2048
   s.verdict = {decision:"lift",rationale:"Volume spike explained by seasonal sale.",rfi:""};
   return s; };
 
-let state;
-try { state = JSON.parse(localStorage.getItem(STORE_KEY)); } catch(e) { state = null; }
-if (!state || !state.sections) state = example();
-for (const s of SECTIONS) state.sections[s.id] ??= {status:"",text:"",force:false};
-
-const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e) {} };
+// Privacy: the case lives only in this tab's memory. Nothing is written to disk,
+// browser storage or cookies, so closing or refreshing the tab erases it.
+let state = blank();
+const hasContent = () => !state.example && (state.caseId.trim() || state.verdict.rationale.trim() || state.verdict.decision ||
+  Object.values(state.sections).some(x => x.status || x.text.trim()));
 const $ = (sel, root=document) => root.querySelector(sel);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -368,7 +371,6 @@ function insertChip(ta, text){
 }
 
 function update(){
-  save();
   const res = evaluate();
   // section chrome
   for (const sec of SECTIONS){
@@ -466,8 +468,10 @@ function showNote(res){
     <h2 id="dlgT">Annotation ready</h2>
     <p>Handle time <span class="mono">${aht}</span>. Copy it into the case tool.</p>
     <pre class="note" id="noteText" tabindex="0">${esc(note)}</pre>
-    <div class="actions"><button class="btn primary" type="button" id="copy">Copy note</button><button class="btn" type="button" id="dlgClose">Back to case</button></div>
+    <div class="actions"><button class="btn primary" type="button" id="copy">Copy note</button><button class="btn" type="button" id="dlgClose">Back to case</button><button class="btn" type="button" id="nextCase">Clear &amp; start next case</button></div>
+    <p>Paste the note into the case tool before clearing. Clearing erases this case from the page.</p>
   </div></div>`;
+  $("#nextCase").addEventListener("click", () => { closeDlg(); resetCase(); });
   $("#dlgClose").addEventListener("click", closeDlg);
   $("#copy").addEventListener("click", () => {
     const fallback = () => {
@@ -484,26 +488,36 @@ function toast(msg){ const t = document.createElement("div"); t.className="toast
 /* ============================================================
    Case bar, timer, shortcuts
    ============================================================ */
-function bindCaseBar(){
-  for (const k of ["caseId","reviewer","caseType"]){
-    const el = $("#"+k); el.value = state[k];
-    el.addEventListener(k==="caseType"?"change":"input", () => {
-      state[k] = el.value;
-      if (k==="caseType"){ state.verdict.decision=""; renderSections(); }
-      update();
-    });
-  }
+const CASE_FIELDS = ["caseId","reviewer","caseType"];
+for (const k of CASE_FIELDS){
+  const el = $("#"+k);
+  el.addEventListener(k==="caseType"?"change":"input", () => {
+    state[k] = el.value;
+    if (k==="caseType"){ state.verdict.decision=""; renderSections(); }
+    update();
+  });
 }
-let armed = null;
-$("#newCase").addEventListener("click", e => {
-  const b = e.currentTarget;
-  if (!armed){ b.textContent = "Click again to clear"; b.classList.add("danger");
-    armed = setTimeout(()=>{ armed=null; b.textContent="New case"; b.classList.remove("danger"); }, 2500); return; }
-  clearTimeout(armed); armed = null; b.textContent = "New case"; b.classList.remove("danger");
+function bindCaseBar(){ for (const k of CASE_FIELDS) $("#"+k).value = state[k]; }
+function resetCase(){
   const reviewer = state.example ? "" : state.reviewer, type = state.caseType;
   state = blank(); state.reviewer = reviewer; state.caseType = type;
   bindCaseBar(); renderSections(); update(); $("#caseId").focus(); toast("New case started");
-});
+}
+// Destructive buttons ask for a second click when a real case is open.
+function confirmClick(btn, label, action){
+  let armed = null;
+  btn.addEventListener("click", () => {
+    if (!hasContent()) return action();
+    if (!armed){ btn.textContent = "Click again to clear case"; btn.classList.add("danger");
+      armed = setTimeout(()=>{ armed=null; btn.textContent=label; btn.classList.remove("danger"); }, 2500); return; }
+    clearTimeout(armed); armed = null; btn.textContent = label; btn.classList.remove("danger");
+    action();
+  });
+}
+confirmClick($("#newCase"), "New case", resetCase);
+confirmClick($("#showExample"), "Show example", () => { state = example(); bindCaseBar(); renderSections(); update(); });
+// Warn before closing or refreshing the tab with an unfinished case, since nothing is saved.
+addEventListener("beforeunload", e => { if (hasContent()){ e.preventDefault(); e.returnValue = ""; } });
 $("#complete").addEventListener("click", complete);
 $("#target").textContent = `target ${TARGET_AHT_MIN}:00`;
 setInterval(() => {
