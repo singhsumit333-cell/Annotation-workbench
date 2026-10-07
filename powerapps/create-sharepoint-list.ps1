@@ -24,7 +24,7 @@ Set-PnPField -List $ListName -Identity "Title" -Values @{ Title = "Case ID" } | 
 
 $text = @("Reviewer","CaseType","Decision","MissedAtFirstCheck")
 $note = @("Rationale","VerdictDetail","WarningsAcknowledged","FinalNote")
-$sources = @("Profile","PriorNotes","Documents","ATO","LinkedReview","ServiceLog","MoneyMovement","TransactionLog","Counterparty")
+$sources = @("Profile","PriorNotes","Documents","ATO","LinkedReview","ServiceLog","MoneyMovement","TransactionLog","Counterparty","ExternalSearch")
 foreach ($s in $sources) { $text += "${s}Status"; $note += "${s}Notes" }
 
 $existing = (Get-PnPField -List $ListName).InternalName

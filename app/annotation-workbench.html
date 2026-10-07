@@ -155,7 +155,7 @@ pre.note{white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 var(--font-
       <ul class="srcs" id="srcList"></ul>
       <h3 id="issueHead">Open items</h3>
       <ul class="issues" id="issueList"></ul>
-      <span class="kbd">Alt+1…9 jump to a section · Alt+0 verdict · Ctrl+Enter complete</span>
+      <span class="kbd">Alt+1…9 sections 1–9 · Alt+0 verdict · Ctrl+Enter complete</span>
     </aside>
   </div>
 </div>
@@ -170,34 +170,39 @@ const MIN_NOTE_CHARS = 3;           // shortest acceptable note per source
 
 // Each review source. `required` lists the case types where it is mandatory.
 // `requiredIf` makes it mandatory when another source is marked Concern.
+// Quick-pick prefixes: "!" = concern phrase (sets Concern), "~" = neutral (sets nothing),
+// no prefix = clear phrase (sets Clear). Status is only set if none was picked yet.
 const SECTIONS = [
-  { id:"profile", title:"Account profile", where:"Profile page: business type, age of account, ownership, contact & bank details, restriction reason.",
-    required:["review","onboarding"],
-    chips:["Profile details consistent with business type","Account age < 90 days","Recent bank account change","Business category mismatch","Restriction reason: "] },
-  { id:"prior", title:"Previous teammate notes", where:"Case history: earlier annotations, open RFIs, past verdicts and escalations.",
-    required:["review","onboarding"],
-    chips:["No prior reviews","Prior review cleared with no concerns","Pending RFI from previous review","Previously escalated","Prior verdict: "] },
-  { id:"documents", title:"Documents provided", where:"Document store: ID, proof of address, business registration, bank statements, invoices.",
-    required:["review","onboarding"],
-    chips:["All requested documents received and valid","ID verified","Proof of address verified","Document appears altered","Document name mismatch with account","Documents outstanding: "] },
+  { id:"profile", title:"Account profile review", where:"Profile page: business type, account age, ownership, contact & bank details, and why the account was restricted.",
+    required:["review", "onboarding"],
+    chips:["Profile details consistent with business type", "~Restriction reason: ", "!Account age < 90 days", "!Recent bank account change", "!Business category mismatch"] },
+  { id:"linked", title:"Linked account review", where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts. Then review each linked account: status, restriction reasons, past verdicts.",
+    required:["review", "onboarding"],
+    chips:["No linked accounts", "Linked accounts found, all in good standing", "Linked account review shows no risk", "!Linked to restricted/closed account", "!Linked account restricted for fraud", "!Linked account closed by us", "!Shared bank account with other seller", "!Shared device/IP"] },
   { id:"ato", title:"ATO indicators", where:"Login & security history: password/email/phone changes, new devices, IP/geo, 2FA resets.",
     required:["review"],
-    chips:["No ATO indicators","Password reset followed by bank change","Login from new device/country","Email or phone changed recently","2FA reset"] },
-  { id:"linked", title:"Linked account review", where:"Linking tool: shared device, IP, bank, address, phone, email with other accounts. Then review each linked account: status, restriction reasons, past verdicts.",
-    required:["review","onboarding"],
-    chips:["No linked accounts","Linked accounts found, all in good standing","Linked account review shows no risk","Linked to restricted/closed account","Linked account restricted for fraud","Linked account closed by us","Shared bank account with other seller","Shared device/IP"] },
-  { id:"service", title:"Service log", where:"Contacts: calls, chats, emails with the seller and what they claimed.",
-    required:["review","onboarding"],
-    chips:["No contacts on record","Seller contacted about restriction","Seller explanation consistent with evidence","Seller explanation inconsistent with evidence","Threat of chargeback/legal"] },
-  { id:"money", title:"Money movement & cash advancing", where:"Transactions: inflow vs outflow, rapid withdrawals, round amounts, refunds, cash-advance patterns.",
-    required:["review"],
-    chips:["Money movement in line with business","Rapid in-and-out (pass-through) funds","Round-amount transactions","Possible cash advancing: self-funded card payments","Refunds to different instrument"] },
+    chips:["No ATO indicators", "!Password reset followed by bank change", "!Login from new device/country", "!Email or phone changed recently", "!2FA reset"] },
   { id:"txnlog", title:"Transaction log review", where:"Transaction log: every transaction on the account, amounts, dates, payers/payees, refunds and reversals.",
-    required:["review","onboarding"],
+    required:["review", "onboarding"],
     chips:["No transactions on the account"] },
   { id:"counterparty", title:"Counterparty review", where:"Buyers/payers: repeat payers, related parties, disputes and chargebacks.",
     required:[], requiredIf:"money",
-    chips:["Counterparties look genuine","Same payer repeatedly","Counterparty linked to seller","High dispute/chargeback rate"] },
+    chips:["Counterparties look genuine", "!Same payer repeatedly", "!Counterparty linked to seller", "!High dispute/chargeback rate"] },
+  { id:"money", title:"Money movement, cash advancing & P2P", where:"Transactions: inflow vs outflow, rapid withdrawals, round amounts, refunds, cash-advance patterns, personal (P2P) transfers.",
+    required:["review"],
+    chips:["Money movement in line with business", "No P2P activity", "!Rapid in-and-out (pass-through) funds", "!Round-amount transactions", "!Possible cash advancing: self-funded card payments", "!P2P / personal transfers through the account", "!Refunds to different instrument"] },
+  { id:"service", title:"Service log", where:"Contacts: calls, chats, emails with the seller and what they claimed.",
+    required:["review", "onboarding"],
+    chips:["No contacts on record", "~Seller contacted about restriction", "Seller explanation consistent with evidence", "!Seller explanation inconsistent with evidence", "!Threat of chargeback/legal"] },
+  { id:"prior", title:"Previous review notes", where:"Case history: earlier teammate annotations, open RFIs, past verdicts and escalations.",
+    required:["review", "onboarding"],
+    chips:["No prior reviews", "Prior review cleared with no concerns", "!Pending RFI from previous review", "!Previously escalated", "~Prior verdict: "] },
+  { id:"documents", title:"Documents provided by merchant", where:"Document store: ID, proof of address, business registration, bank statements, invoices.",
+    required:["review", "onboarding"],
+    chips:["All requested documents received and valid", "ID verified", "Proof of address verified", "!Document appears altered", "!Document name mismatch with account", "!Documents outstanding: "] },
+  { id:"external", title:"External search", where:"Your own search outside our tools: business website, registries, reviews, social media, news. For a business account, write what you found.",
+    required:["review", "onboarding"],
+    chips:["~It's a personal account"] },
 ];
 
 // Final verdict options (same for both case types).
@@ -221,7 +226,7 @@ const verdictOf = key => VERDICTS.find(v => v.key === key);
 // If these words appear anywhere in the notes, the named source should not be Clear / N/A.
 const KEYWORDS = [
   { sec:"ato", words:["password reset","password change","new device","email change","email changed","phone change","phone changed","2fa","unrecognised login","unrecognized login","takeover","hacked"] },
-  { sec:"money", words:["cash advance","cash advancing","pass-through","round amount","rapid withdrawal","self-funded","structuring"] },
+  { sec:"money", words:["cash advance","cash advancing","pass-through","round amount","rapid withdrawal","self-funded","structuring","p2p","peer-to-peer"] },
   { sec:"linked", words:["linked to","shared device","shared bank","same ip","same device","related account"] },
   { sec:"documents", words:["altered","forged","fake document","edited document","expired id","pending document","outstanding document"] },
 ];
@@ -347,7 +352,7 @@ function renderSections(){
         </div>
       </div>
       <p class="where">${esc(sec.where)}</p>
-      <div class="chips">${sec.chips.map(c=>`<button type="button" class="chip">${esc(c)}</button>`).join("")}</div>
+      <div class="chips">${sec.chips.map(c=>`<button type="button" class="chip" data-kind="${"!~".includes(c[0]) ? c[0] : ""}">${esc("!~".includes(c[0]) ? c.slice(1) : c)}</button>`).join("")}</div>
       <textarea id="txt-${sec.id}" aria-label="${esc(sec.title)} notes" placeholder="What did you check and what did you find?">${esc(st.text)}</textarea>
       ${conditional ? `<label class="force"><input type="checkbox" id="force-${sec.id}" ${st.force?"checked":""}> Required for this case (auto-required when ${esc(titleOf(sec.requiredIf))} is Concern)</label>` : ""}`;
     el.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
@@ -357,7 +362,7 @@ function renderSections(){
     ta.addEventListener("input", () => { st.text = ta.value; update(); });
     el.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
       insertChip(ta, c.textContent); st.text = ta.value;
-      if (!st.status) st.status = /^no |consistent|in line|genuine|verified|all requested|cleared|no risk|good standing/i.test(c.textContent) ? "clear" : "concern";
+      if (!st.status && c.dataset.kind !== "~") st.status = c.dataset.kind === "!" ? "concern" : "clear";
       update();
     }));
     const f = el.querySelector(`#force-${sec.id}`);

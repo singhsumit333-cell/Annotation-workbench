@@ -34,6 +34,8 @@ If(
       TransactionLogNotes:  If(full, LookUp(colReview, Id = "txnlog").Notes, ""),
       CounterpartyStatus:   LookUp(colReview, Id = "counterparty").Status,
       CounterpartyNotes:    If(full, LookUp(colReview, Id = "counterparty").Notes, ""),
+      ExternalSearchStatus: LookUp(colReview, Id = "external").Status,
+      ExternalSearchNotes:  If(full, LookUp(colReview, Id = "external").Notes, ""),
       Decision:             LookUp(colDecisions, Key = varDecision).Label,
       Rationale:            If(full, varRationale, ""),
       VerdictDetail:         If(full, varDetail, ""),
